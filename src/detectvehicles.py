@@ -1,4 +1,4 @@
-# YOLOv5 🚀 by Ultralytics, GPL-3.0 license
+# YOLOv5 by Ultralytics, GPL-3.0 license
 
 """
 
@@ -52,7 +52,6 @@ Usage - ROI:
 """
 
 import argparse
-import optparse
 import os
 import platform
 import sys
@@ -65,11 +64,10 @@ import numpy
 
 from yolov5.utils.augmentations import letterbox
 
-import socketio
+from emittowebsocket import connect, disconnect, emit
 
-# websocket stuffs
-socketio_client = socketio.Client()
-yolo_event = 'YOLO_EVENT'
+from filterrois import filter_roi
+from getrois import get_rois
 
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[0]  # YOLOv5 root directory
@@ -115,110 +113,6 @@ def get_fps(source: str) -> int:
         return fps
     return FPS
 
-def get_rois(title: str, frame, number: int):
-    '''
-    Opens up the roi selection window and return multiple region of interest coordinates.
-    The coordinates is in the form [ [xStart, yStart, width height], ...
-
-    @param title: the title of the opened roi selection window
-    @param frame: the frame for roi selection
-    @param number: number of rois
-
-    if the number is 0 then whole image is roi
-    if the number is 1 then only one roi is allowed
-     '''
-    if number == 0:
-        rois = [0, 0, frame.shape[0], frame.shape[1]]
-        return rois
-    elif number == 1:
-        coordinates = cv2.selectROI(title, frame, showCrosshari=False)
-        rois = coordinates
-    else:
-        coordinates = cv2.selectROIs(title, frame, showCrosshair=False)
-
-        rois = numpy.zeros((number, 4)) # [ [xStart, yStart, width, height], ...
-        for i, roi in enumerate(coordinates):
-            rois[i]=roi
-
-    cv2.destroyWindow(title)
-
-    return rois
-
-def filter_roi(rois, parent_image, interpolation: bool=False, fill_empty: bool=False):
-    '''
-    Filters out the roi from the image.
-    
-    if @param: interpolation is True then
-    image is interpolated to make height and width of each rois same
-    
-    if @parem: interpolation is False and
-       @param: fill_empty is True then for resizing, the empty pixels is made black.
-       Here, the empty pixels means those pixels of sub-images which is smaller than
-       the image of maximum height and width
-
-    if @parem: interpolation is False and
-       @param: fill_empty is also false then the images aren't resized,
-       the original dimension is used but the region except roi is made black
-
-    @param roi: array of region of interests in the format [xStart, yStart, width, height]
-    @param parent_image: the image on which roi was selected
-    '''
-
-    if(interpolation or fill_empty):
-        # cropping the image
-        image_parts = []
-        max_height = 0
-        max_width = 0
-        total_width = 0
-  
-        for roi in rois:  # different parts of the image ( region of interest array )
-
-            image_parts.append(parent_image[int(roi[1]):int(roi[1] + roi[3]), int(roi[0]): int(roi[0] + roi[2])])
-
-            # this is done for resizing all the images to the same size
-            height, width =  image_parts[-1].shape[:2]
-            max_height = max(max_height, height)
-            max_width = max(max_width, width)
-            total_width += width
-
-        
-        # using interpolation for resizing, produces distorted image if the image sizes differs a lot
-        if interpolation:
-            for i, image in enumerate(image_parts):
-                image_parts[i] = cv2.resize(image, [max_height, max_width])
-
-        elif fill_empty:
-            resized_image_array = []
-            for image_part in image_parts:
-
-                # the dimension and channel of image part
-                img_height = int(image_part.shape[0])
-                img_width = int(image_part.shape[1])
-                img_channel = image_part.shape[2]
-
-                # appending a fully black image of max_height and max_width
-                resized_image_array.append(numpy.zeros((max_height, max_width, img_channel), image_part.dtype))
-
-                # only copying the filled parts and leaving the rest as the dark image
-
-                resized_image_array[-1][0:img_height, 0:img_width] = image_part[0:img_height, 0:img_width]
-
-            image_parts = resized_image_array
-
-        return_image = numpy.concatenate(image_parts, axis=1)
-
-    else:
-        # creating a bigger empty image to place the image parts
-        whole_image = numpy.zeros(parent_image.shape, parent_image.dtype)
-
-        for roi in rois: 
-            # stitching the part image into the whole image
-            whole_image[int(roi[1]):int(roi[1] + roi[3]), int(roi[0]): int(roi[0] + roi[2])] = \
-                parent_image[int(roi[1]):int(roi[1] + roi[3]), int(roi[0]): int(roi[0] + roi[2])]
-
-        return_image = whole_image
-
-    return return_image
 
 def display_and_wait(frame):
 
@@ -388,7 +282,7 @@ def run(
                     print("\n******Using computationally intensive object detection**************")
                     for *xyxy, conf, cls in reversed(det):
                         if web_socket:
-                            socketio_client.emit(yolo_event, str([xyxy, conf, cls, "Inferenced"]))
+                            emit([xyxy, conf, cls, "Inferenced"])
 
                         if save_txt:  # Write to file
                             xywh = (xyxy2xywh(torch.tensor(xyxy).view(1, 4)) / gn).view(-1).tolist()  # normalized xywh
@@ -468,7 +362,7 @@ def run(
                     for *xyxy, conf, cls in reversed(det):
                          
                         if web_socket:
-                            socketio_client.emit(yolo_event, str([xyxy, conf, cls, "Tracking"]))
+                            emit([xyxy, conf, cls, "Tracking"])
                         
                         if save_txt:  # Write to file
                             xywh = (xyxy2xywh(torch.tensor(xyxy).view(1, 4)) / gn).view(-1).tolist()  # normalized xywh
@@ -575,13 +469,12 @@ def main(opt: argparse.Namespace):
     check_requirements(exclude=('tensorboard', 'thop'))
 
     if opt.web_socket:
-        socketio_client.connect('http://localhost:5000')
+        connect()
 
     run(**vars(opt))
 
     if opt.web_socket:
-        socketio_client.disconnect()
-
+        disconnect
 
 if __name__ == "__main__":
     opt = parse_opt()
