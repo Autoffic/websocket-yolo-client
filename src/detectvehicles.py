@@ -68,6 +68,8 @@ from emittowebsocket import connect, disconnect, emit
 
 from filterrois import filter_roi
 from getrois import get_rois
+from lanes import getCountingLine, getLaneEndingPoints
+
 
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[0]  # YOLOv5 root directory
@@ -202,16 +204,42 @@ def run(
     # this will be a list of list containing tracker, class name and confidence
     # for simplicity the confidence is same as the object detection confidence
     trackers = []
+    lines = []
+    points = []
     rois = []  # Just to make this global, ensure it is initialized before filtering the roi
 
     for path, im, im0s, vid_cap, s in dataset:
 
         # selecting roi in the very first frame
-        if (total_frames == 0) and number_of_rois > 0:
-            rois = get_rois("Press Esc after selecting all the rois", im0s, number_of_rois)
+        if (total_frames == 0):
+            if number_of_rois > 0:
+                rois = get_rois("Press Esc after selecting all the rois", im0s, number_of_rois)
+
+                im0s = filter_roi(rois, im0s, interpolation=False, fill_empty=True)
+
+            # asking for counting lines in roi selected image
+            lines = getCountingLine(im0s, "Get Lines")
+
+            # drawing the lines
+            for line in lines:
+                cv2.line(im0s, line[0], line[1], (255, 0, 0), 1)
+
+            # asking for lanes end points after drawing the lines
+            points = getLaneEndingPoints(im0s, "Get Points")
 
         if number_of_rois > 0:
-            im0s = filter_roi(rois, im0s, interpolation=False, fill_empty=True)
+
+            # this is already done above so skipping in the very first frame
+            if not (total_frames == 0):
+                im0s = filter_roi(rois, im0s, interpolation=False, fill_empty=True)
+
+                # drawing the lines
+                for line in lines:
+                    cv2.line(im0s, line[0], line[1], (255, 0, 0), 2)
+
+            # drawing the points
+            for point in points:
+                cv2.circle(im0s, point, 2, (0, 0, 255), -1)
 
             '''
             a copy of code from utils.dataloaders to resize the im accordingly
@@ -224,6 +252,16 @@ def run(
             im = im.transpose((2, 0, 1))[::-1]  # HWC to CHW, BGR to RGB
             im = numpy.ascontiguousarray(im)  # contiguous
             #**********************************************************************
+        else:
+            # this is already done above so skipping in the very first frame
+            if not (total_frames == 0):
+                # drawing the lines
+                for line in lines:
+                    cv2.line(im0s, line[0], line[1], (255, 0, 0), 2)
+
+            # drawing the points
+            for point in points:
+                cv2.circle(im0s, point, 2, (0, 0, 255), -1)
 
         # since open'c cv's defuault channel is bgr and that of dlib's is rgb
         rgb = cv2.cvtColor(im0s, cv2.COLOR_BGR2RGB)
