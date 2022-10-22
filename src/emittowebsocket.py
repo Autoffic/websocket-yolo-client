@@ -1,6 +1,5 @@
 from typing import Any
 import socketio
-import json
 
 socketio_client = socketio.Client()
 yolo_event = 'YOLO_EVENT'
