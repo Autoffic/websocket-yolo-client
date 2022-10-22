@@ -57,6 +57,7 @@ import platform
 import sys
 from pathlib import Path
 import dlib
+from termcolor import colored
 
 import torch
 
@@ -64,15 +65,9 @@ import numpy
 
 from yolov5.utils.augmentations import letterbox
 
-from emittowebsocket import connect, disconnect, emit
-
-from filterrois import filter_roi
-from getrois import get_rois
-from lanes import getCountingLine, getLaneEndingPoints
-
 
 FILE = Path(__file__).resolve()
-ROOT = FILE.parents[0]  # YOLOv5 root directory
+ROOT = FILE.parents[0]  # src directory
 if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))  # add ROOT to PATH
 ROOT = Path(os.path.relpath(ROOT, Path.cwd()))  # relative
@@ -84,6 +79,11 @@ from yolov5.utils.general import (LOGGER, Profile, check_file, check_img_size, c
 from yolov5.utils.plots import Annotator, colors, save_one_box
 from yolov5.utils.torch_utils import select_device, smart_inference_mode
 
+from emittowebsocket import connect, disconnect, emit
+
+from filterrois import filter_roi
+from getrois import get_rois
+from Lanes import *
 
 FPS = 24  # assuming 24 fps from standard sources
 
@@ -157,7 +157,8 @@ def run(
         vid_stride=1,  # video frame-rate stride
         inference_per_second=4, # inference per second
         number_of_rois=0,
-        web_socket=False # whether or not to transfer the data via websocket
+        web_socket=False, # whether or not to transfer the data via websocket
+        number_of_lanes=3 # total number of lanes to select
 ):
 
     source = str(source)
@@ -204,28 +205,26 @@ def run(
     # this will be a list of list containing tracker, class name and confidence
     # for simplicity the confidence is same as the object detection confidence
     trackers = []
-    lines = []
-    points = []
-    rois = []  # Just to make this global, ensure it is initialized before filtering the roi
+    lanes = Lanes(numpy.zeros((600, 600, 3), numpy.uint8)) # black image (just to make lanes globally accessible)
 
     for path, im, im0s, vid_cap, s in dataset:
 
         # selecting roi in the very first frame
         if (total_frames == 0):
+
             if number_of_rois > 0:
                 rois = get_rois("Press Esc after selecting all the rois", im0s, number_of_rois)
 
                 im0s = filter_roi(rois, im0s, interpolation=False, fill_empty=True)
 
-            # asking for counting lines in roi selected image
-            lines = getCountingLine(im0s, "Get Lines")
 
-            # drawing the lines
-            for line in lines:
-                cv2.line(im0s, line[0], line[1], (255, 0, 0), 1)
+            colored_text = colored("\nGetting the lanes in order\n", 'green')
+            print(colored_text)
 
-            # asking for lanes end points after drawing the lines
-            points = getLaneEndingPoints(im0s, "Get Points")
+            lanes = Lanes(im0s.copy(), number_of_lanes) # overriding the above lanes value 
+
+            # asking for lanes in roi selected image
+            lanes.getAllData()
 
         if number_of_rois > 0:
 
@@ -233,13 +232,10 @@ def run(
             if not (total_frames == 0):
                 im0s = filter_roi(rois, im0s, interpolation=False, fill_empty=True)
 
-                # drawing the lines
-                for line in lines:
-                    cv2.line(im0s, line[0], line[1], (255, 0, 0), 2)
-
-            # drawing the points
-            for point in points:
-                cv2.circle(im0s, point, 2, (0, 0, 255), -1)
+            # drawing the lanes
+            for lane_name, lane in lanes.lanes_dict.items():
+                cv2.putText(im0s, lane_name, lane.start_point, cv2.FONT_HERSHEY_SIMPLEX, 1, (88, 11, 22) , 2)
+                cv2.line(im0s, lane.start_point, lane.end_point, (255, 0, 0), 2)
 
             '''
             a copy of code from utils.dataloaders to resize the im accordingly
@@ -253,15 +249,10 @@ def run(
             im = numpy.ascontiguousarray(im)  # contiguous
             #**********************************************************************
         else:
-            # this is already done above so skipping in the very first frame
-            if not (total_frames == 0):
-                # drawing the lines
-                for line in lines:
-                    cv2.line(im0s, line[0], line[1], (255, 0, 0), 2)
-
-            # drawing the points
-            for point in points:
-                cv2.circle(im0s, point, 2, (0, 0, 255), -1)
+            # drawing the lanes
+            for lane_name, lane in lanes.lanes_dict.items():
+                cv2.putText(im0s, lane_name, lane.start_point, cv2.FONT_HERSHEY_SIMPLEX, 1, (88, 11, 22) , 1)
+                cv2.line(im0s, lane.start_point, lane.end_point, (255, 0, 0), 2)
 
         # since open'c cv's defuault channel is bgr and that of dlib's is rgb
         rgb = cv2.cvtColor(im0s, cv2.COLOR_BGR2RGB)
@@ -320,6 +311,8 @@ def run(
                     print("\n******Using computationally intensive object detection**************")
                     for *xyxy, conf, cls in reversed(det):
                         if web_socket:
+                            # TODO centroid tracking
+
                             emit([xyxy, conf, cls, "Inferenced"])
 
                         if save_txt:  # Write to file
@@ -400,6 +393,8 @@ def run(
                     for *xyxy, conf, cls in reversed(det):
                          
                         if web_socket:
+                            # TODO centroid tracking
+
                             emit([xyxy, conf, cls, "Tracking"])
                         
                         if save_txt:  # Write to file
@@ -496,6 +491,7 @@ def parse_opt():
     parser.add_argument('--inference-per-second', type=int, default=4, help='run inference this many times a second')
     parser.add_argument('--number-of-rois', type=int, default=0, help='number of region of interests')
     parser.add_argument('--web-socket', action='store_true', default=False, help='whether or not to transfer data through websocket')
+    parser.add_argument('--number-of-lanes', type=int, default=3, help='total number of lanes to select in the given source')
     opt = parser.parse_args()
     opt.imgsz *= 2 if len(opt.imgsz) == 1 else 1  # expand
     print_args(vars(opt))
