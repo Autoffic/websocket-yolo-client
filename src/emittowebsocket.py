@@ -1,7 +1,7 @@
 from typing import Any
 import socketio
 
-socketio_client = socketio.Client()
+socketio_client = socketio.Client(logger=True, engineio_logger=True)
 yolo_event = 'YOLO_EVENT'
 default_url = 'http://127.0.0.1:5000'
 
