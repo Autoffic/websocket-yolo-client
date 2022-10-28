@@ -5,4 +5,4 @@ from .emittowebsocket import *
 from .detectvehicles import *
 from .filterrois import *
 from .getrois import *
-from .lanes import *
+from .Lanes import *

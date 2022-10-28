@@ -16,7 +16,7 @@ from src.Lanes import Lanes
 
 CV2_KEY_ENTER = 13
 
-def test() -> NoReturn:
+def test() -> None:
     test_img = numpy.zeros((600, 600, 3), numpy.uint8)
     test_lanes = Lanes(test_img)
 

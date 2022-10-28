@@ -1,4 +1,4 @@
-from typing import List, NoReturn, Tuple
+from typing import List, Tuple
 import numpy as np
 import cv2
 from termcolor import colored
@@ -6,15 +6,15 @@ from termcolor import colored
 CV2_KEY_ENTER = 13 # carriage return = 13
 
 
-class lane:
+class Lane:
     '''
     Contains start point and end point
     '''
-    def __init__(self, start_point = (-1, -1), end_point = (-1, -1)):
+    def __init__(self, start_point = (-1, -1), end_point = (-1, -1)) -> None:
         self.start_point = start_point
         self.end_point = end_point
 
-    def getLaneFromImage(self, img, window_name: str)-> Tuple[int, int]:
+    def getLaneFromImage(self, img, window_name: str)-> List[List[Tuple[int, int]]]:
         colored_text = colored("\n Press r to reset and retry (getting counting lines) \n \t \
             press enter to confirm the selection\n \t \
             please select only one lane\n", 'cyan')
@@ -22,17 +22,17 @@ class lane:
 
         img_copy = img.copy()
 
-        line = []
+        line: List[List[Tuple[int, int]]] = []
 
         preview = None
             
-        initialPoint = (-1, -1)
+        initialPoint: Tuple[int, int] = (-1, -1)
 
         # either a line is being drawn
         drawing = False
 
         # mouse callback
-        def drawLine(event,x,y,flags,param) -> NoReturn:
+        def drawLine(event,x,y,flags,param) -> None:
             '''
                 Mouse callback
             '''
@@ -133,7 +133,7 @@ class lane:
 
 class Lanes:
 
-    def __init__(self, img, number_of_lanes = 3):
+    def __init__(self, img: np.ndarray, number_of_lanes: int = 3):
         '''
         img: the source image
         '''
@@ -146,7 +146,7 @@ class Lanes:
         self.number_of_lanes = number_of_lanes
 
     
-    def getCountingLine(self, img, window_name: str) -> List[List[Tuple[int, int]]]:
+    def getCountingLine(self, img: np.ndarray, window_name: str) -> List[List[Tuple[int, int]]]:
         '''
         img is the source image,
         window_name is the name of window on top of which image is drawn
@@ -173,7 +173,7 @@ class Lanes:
         drawing = False
 
         # mouse callback
-        def drawLine(event,x,y,flags,param):
+        def drawLine(event,x: int,y: int, flags, param) -> None:
             # accessing variables from enclosing scope
             nonlocal initialPoint, drawing, preview, lines
 
@@ -224,7 +224,7 @@ class Lanes:
 
         return lines
 
-    def getLaneEndingPoints(self, img, window_name: str) -> List[Tuple[int, int]]:
+    def getLaneEndingPoints(self, img: np.ndarray, window_name: str) -> List[Tuple[int, int]]:
         '''
         Returns the list of points
         '''
@@ -275,7 +275,7 @@ class Lanes:
                 colored_text = colored("\n Retrying on new image \n", 'green')
                 print(colored_text)
 
-                return self.getLaneEndingPoints(self, window_name=window_name)
+                return self.getLaneEndingPoints(self.img, window_name=window_name)
 
             # exiting after selecting all the points
             if k == CV2_KEY_ENTER: 
@@ -285,12 +285,12 @@ class Lanes:
 
         return points
 
-    def getAllData(self) -> dict[str, lane]:
+    def getAllData(self) -> dict[str, Lane]:
         '''
         returns a dictionary of lane id as key and lane object as value
         '''
         for i in range(self.number_of_lanes):
-            new_lane = lane(self.img)
+            new_lane = Lane(self.img)
             new_lane.getLaneFromImage(self.img, f"Lane {i}")
             self.lanes_dict[f"lane{i}"] = new_lane
         

@@ -90,7 +90,6 @@ FPS = 24  # assuming 24 fps from standard sources
 # the default classes to detect
 default_classes=[1,2,3,5,7]
 
-
 def get_fps(source: str) -> int:
     '''
     Returns the fps of the video stream, 
@@ -175,7 +174,7 @@ def run(
 
     # Load model
     device = select_device(device)
-    model = DetectMultiBackend(weights, device=device, dnn=dnn, data=data, fp16=half)
+    model = DetectMultiBackend(str(weights.resolve()), device=device, dnn=dnn, data=data, fp16=half)
     stride, names, pt = model.stride, model.names, model.pt
     imgsz = check_img_size(imgsz, s=stride)  # check image size
 
@@ -206,6 +205,7 @@ def run(
     # for simplicity the confidence is same as the object detection confidence
     trackers = []
     lanes = Lanes(numpy.zeros((600, 600, 3), numpy.uint8)) # black image (just to make lanes globally accessible)
+    rois = []
 
     for path, im, im0s, vid_cap, s in dataset:
 
@@ -508,7 +508,7 @@ def main(opt: argparse.Namespace):
     run(**vars(opt))
 
     if opt.web_socket:
-        disconnect
+        disconnect()
 
 if __name__ == "__main__":
     opt = parse_opt()
