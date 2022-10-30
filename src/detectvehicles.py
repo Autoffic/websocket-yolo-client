@@ -52,10 +52,12 @@ Usage - ROI:
 """
 
 import argparse
+from faulthandler import disable
 import os
 import platform
 import sys
 from pathlib import Path
+from typing import OrderedDict
 import dlib
 from termcolor import colored
 
@@ -84,6 +86,10 @@ from emittowebsocket import connect, disconnect, emit
 from filterrois import filter_roi
 from getrois import get_rois
 from Lanes import *
+
+from centroidtracker import CentroidTracker
+
+from emitifpassed import passedLane
 
 FPS = 24  # assuming 24 fps from standard sources
 
@@ -157,7 +163,8 @@ def run(
         inference_per_second=4, # inference per second
         number_of_rois=0,
         web_socket=False, # whether or not to transfer the data via websocket
-        number_of_lanes=3 # total number of lanes to select
+        number_of_lanes=3, # total number of lanes to select
+        disable_centroid_tracking=False # to disable centroid tracking
 ):
 
     source = str(source)
@@ -207,7 +214,19 @@ def run(
     lanes = Lanes(numpy.zeros((600, 600, 3), numpy.uint8)) # black image (just to make lanes globally accessible)
     rois = []
 
+    if not disable_centroid_tracking:
+        ct=CentroidTracker(maxDisappeared=40,maxDistance=50)
+
+        # keep track of object in previous step
+        previous_objects = {}
+
     for path, im, im0s, vid_cap, s in dataset:
+        
+        if not disable_centroid_tracking:
+            # bounding boxes for centroid tracking
+            rects = []
+            # objects dictionary for centroid tracking
+            objects = {}
 
         # selecting roi in the very first frame
         if (total_frames == 0):
@@ -310,10 +329,10 @@ def run(
                     trackers = []
                     print("\n******Using computationally intensive object detection**************")
                     for *xyxy, conf, cls in reversed(det):
-                        if web_socket:
-                            # TODO centroid tracking
 
-                            emit([xyxy, conf, cls, "Inferenced"])
+                        if not disable_centroid_tracking:
+                            # updating the bounding box list for centroid tracking
+                            rects.append([xyxy[0], xyxy[1], xyxy[2], xyxy[3], cls])
 
                         if save_txt:  # Write to file
                             xywh = (xyxy2xywh(torch.tensor(xyxy).view(1, 4)) / gn).view(-1).tolist()  # normalized xywh
@@ -339,11 +358,11 @@ def run(
                         # add the tracker to our list of trackers so we can
                         # utilize it during skip frames
                         # class name name and confidence is also added to keep it similar to the predictions
-                        trackers.append([tracker, conf, cls])                
+                        trackers.append([tracker, conf, cls])              
                         
-        
         # determining the bounding box using correlation tracker
         else:
+
             if len(im.shape) == 3:
                     im = im[None]  # expand for batch dim
             
@@ -359,6 +378,10 @@ def run(
                 startY = int(pos.top())
                 endX = int(pos.right())
                 endY = int(pos.bottom())
+
+                if not disable_centroid_tracking:
+                    # updating bounding box list for centroid tracking
+                    rects.append([startX, startY, endX, endY, cls])
 
                 pred.append([startX, startY, endX, endY, float(conf), float(cls)])
             
@@ -391,12 +414,7 @@ def run(
 
                     # Write results
                     for *xyxy, conf, cls in reversed(det):
-                         
-                        if web_socket:
-                            # TODO centroid tracking
 
-                            emit([xyxy, conf, cls, "Tracking"])
-                        
                         if save_txt:  # Write to file
                             xywh = (xyxy2xywh(torch.tensor(xyxy).view(1, 4)) / gn).view(-1).tolist()  # normalized xywh
                             line = (cls, *xywh, conf) if save_conf else (cls, *xywh)  # label format
@@ -407,11 +425,37 @@ def run(
                             c = int(cls)  # integer class
                             label = None if hide_labels else (names[c] if hide_conf else f'{names[c]} {conf:.2f}')
                             annotator.box_label(xyxy, label, color=colors(c, True))
+
                         if save_crop:
                             save_one_box(xyxy, imc, file=save_dir / 'crops' / names[c] / f'{p.stem}.jpg', BGR=True)
-                       
 
-        
+        if not disable_centroid_tracking:
+            # updating the centroid tracker
+            objects = ct.update(rects)
+
+            for (objectID, centroid) in objects.items():
+
+                className = names[int(ct.idToClass[objectID])]
+
+                # drawing the centroids and ids
+                if save_img or save_crop or view_img: 
+                    # draw both the ID of the object and the centroid of the
+                    # object on the output frame
+                    text = "ID {}".format(objectID)
+                    cv2.putText(im0, text, (centroid[0] - 10, centroid[1] - 10),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+                    cv2.circle(im0, (centroid[0], centroid[1]), 4, (255, 255, 255), -1)
+
+                if web_socket:
+                    object_centroid_in_this_step = centroid
+                    object_centroid_in_previous_step = previous_objects.get(objectID)
+
+                    if object_centroid_in_previous_step is not None:
+                        passedlane = passedLane(lanes.lanes_dict, object_centroid_in_this_step, object_centroid_in_previous_step)
+
+                        if passedlane is not None:
+                            emit([passedlane, className])
+            
         # displaying if the bounding boxes are obtained through detection or tracking
         annotator.box_label([10, 10, 10 + 20, 10 + 30], "Detecting" if (not FRAMES_TO_SKIP or total_frames % FRAMES_TO_SKIP == 0) else "Tracking", color=colors(9, True))
 
@@ -448,6 +492,9 @@ def run(
 
         # Print time (inference-only)
         LOGGER.info(f"{s}{'' if len(det) else '(no detections), '}{dt[1].dt * 1E3:.1f}ms")
+
+        if not disable_centroid_tracking:
+            previous_objects = objects.copy()
 
     # Print results
     t = tuple(x.t / seen * 1E3 for x in dt)  # speeds per image
@@ -492,6 +539,7 @@ def parse_opt():
     parser.add_argument('--number-of-rois', type=int, default=0, help='number of region of interests')
     parser.add_argument('--web-socket', action='store_true', default=False, help='whether or not to transfer data through websocket')
     parser.add_argument('--number-of-lanes', type=int, default=3, help='total number of lanes to select in the given source')
+    parser.add_argument('--disable-centroid-tracking', action='store_true', default=False, help="Either to disable centroid tracking")
     opt = parser.parse_args()
     opt.imgsz *= 2 if len(opt.imgsz) == 1 else 1  # expand
     print_args(vars(opt))

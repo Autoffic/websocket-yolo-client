@@ -3,7 +3,8 @@ import socketio
 
 socketio_client = socketio.Client(logger=True, engineio_logger=True)
 yolo_event = 'YOLO_EVENT'
-default_url = 'http://127.0.0.1:5000'
+default_url = 'http://localhost:5000'
+PC_ID = "EAST"
 
 # starting the connection, should be called only once
 def connect(url: str = default_url) -> None:
@@ -15,6 +16,16 @@ def disconnect() -> None:
 
 # emitting the message, the message will be serialized
 def emit(message: Any) -> None:
+    '''
+    The message should be in the form of a list
+    '''
+
+    # appending the pc id to the front of the list
+    message.insert(0, PC_ID)
     serialized_message = str(message)
 
-    socketio_client.emit(yolo_event, serialized_message)
+    # continue even if the message cannot be emitted
+    try:
+        socketio_client.emit(yolo_event, serialized_message)
+    except socketio.server.exceptions.SocketIOError as err:
+        print(err)
