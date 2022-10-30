@@ -224,7 +224,7 @@ def run(
         
         if not disable_centroid_tracking:
             # bounding boxes for centroid tracking
-            rects: List[List[int]] = []
+            rects = []
             # objects dictionary for centroid tracking
             objects = {}
 
@@ -453,10 +453,6 @@ def run(
                     if object_centroid_in_previous_step is not None:
                         passedlane = passedLane(lanes.lanes_dict, object_centroid_in_this_step, object_centroid_in_previous_step)
 
-                        print(f"\n  object_centroid_in_this_step: {object_centroid_in_this_step} \n \
-                                    object_centroid_in_previous_step: {object_centroid_in_previous_step} \n \
-                                    passedLane: {passedlane}\n")
-
                         if passedlane is not None:
                             emit([passedlane, className])
             
@@ -498,7 +494,7 @@ def run(
         LOGGER.info(f"{s}{'' if len(det) else '(no detections), '}{dt[1].dt * 1E3:.1f}ms")
 
         if not disable_centroid_tracking:
-            previous_objects = objects
+            previous_objects = objects.copy()
 
     # Print results
     t = tuple(x.t / seen * 1E3 for x in dt)  # speeds per image
