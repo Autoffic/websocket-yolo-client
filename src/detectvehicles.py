@@ -205,6 +205,10 @@ def run(
     model.warmup(imgsz=(1 if pt else bs, 3, *imgsz))  # warmup
     seen, windows, dt = 0, [], (Profile(), Profile(), Profile())
 
+    # for profiling dlib
+    dlib_profiler = Profile()
+    seen_dlib = 0
+
     # keeping track of frame counts
     total_frames = 0
 
@@ -215,6 +219,12 @@ def run(
     rois = []
 
     if not disable_centroid_tracking:
+        # for proifiling centroid tracker
+        ct_profiler = Profile()
+
+        # for profiling the lane passing detector
+        lp_profiler = Profile()
+
         ct=CentroidTracker(maxDisappeared=40,maxDistance=50)
 
         # keep track of object in previous step
@@ -277,7 +287,8 @@ def run(
         rgb = cv2.cvtColor(im0s, cv2.COLOR_BGR2RGB)
 
         # doing inference only on few frames
-        if not FRAMES_TO_SKIP or ((total_frames % int(FRAMES_TO_SKIP)) == 0):
+        inferencing = not FRAMES_TO_SKIP or ((total_frames % int(FRAMES_TO_SKIP)) == 0)
+        if inferencing:
 
             with dt[0]:
                 im = torch.from_numpy(im).to(device)
@@ -368,28 +379,29 @@ def run(
             
             # loop over the trackers and append the predicitons
             pred = []
-            for tracker, conf, cls in trackers:
-                # update the tracker and grab the updated position
-                tracker.update(rgb)
-                pos = tracker.get_position()
+            with dlib_profiler:  # for profiling dlib's tracker
+                for tracker, conf, cls in trackers:
+                    # update the tracker and grab the updated position
+                    tracker.update(rgb)
+                    pos = tracker.get_position()
 
-                # unpack the position object
-                startX = int(pos.left())
-                startY = int(pos.top())
-                endX = int(pos.right())
-                endY = int(pos.bottom())
+                    # unpack the position object
+                    startX = int(pos.left())
+                    startY = int(pos.top())
+                    endX = int(pos.right())
+                    endY = int(pos.bottom())
 
-                if not disable_centroid_tracking:
-                    # updating bounding box list for centroid tracking
-                    rects.append([startX, startY, endX, endY, cls])
+                    if not disable_centroid_tracking:
+                        # updating bounding box list for centroid tracking
+                        rects.append([startX, startY, endX, endY, cls])
 
-                pred.append([startX, startY, endX, endY, float(conf), float(cls)])
+                    pred.append([startX, startY, endX, endY, float(conf), float(cls)])
             
             pred = torch.tensor(pred)
             pred = [pred]
 
             for i, det in enumerate(pred):  # per image
-                seen += 1
+                seen_dlib += 1
                 if webcam:  # batch_size >= 1
                     p, im0, frame = path[i], im0s[i].copy(), dataset.count
                     s += f'{i}: '
@@ -431,29 +443,39 @@ def run(
 
         if not disable_centroid_tracking:
             # updating the centroid tracker
-            objects = ct.update(rects)
+            
+            # profiling the centroid tracking process
+            with ct_profiler:
+                objects = ct.update(rects)
 
-            for (objectID, centroid) in objects.items():
+            '''
+                The most cpu intensive process in this loop is determining whether some centroids
+                have passed any of the lanes
 
-                className = names[int(ct.idToClass[objectID])]
+                so profiling here is intended to profile lane passing check
+            '''
+            with lp_profiler:
+                for (objectID, centroid) in objects.items():
 
-                # drawing the centroids and ids
-                if save_img or save_crop or view_img: 
-                    # draw both the ID of the object and the centroid of the
-                    # object on the output frame
-                    text = "ID {}".format(objectID)
-                    cv2.putText(im0, text, (centroid[0] - 10, centroid[1] - 10),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
-                    cv2.circle(im0, (centroid[0], centroid[1]), 4, (255, 255, 255), -1)
+                    className = names[int(ct.idToClass[objectID])]
 
-                if web_socket:
+                    # drawing the centroids and ids
+                    if save_img or save_crop or view_img: 
+                        # draw both the ID of the object and the centroid of the
+                        # object on the output frame
+                        text = "ID {}".format(objectID)
+                        cv2.putText(im0, text, (centroid[0] - 10, centroid[1] - 10),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+                        cv2.circle(im0, (centroid[0], centroid[1]), 4, (255, 255, 255), -1)
+
+                    
                     object_centroid_in_this_step = centroid
                     object_centroid_in_previous_step = previous_objects.get(objectID)
 
                     if object_centroid_in_previous_step is not None:
                         passedlane = passedLane(lanes.lanes_dict, object_centroid_in_this_step, object_centroid_in_previous_step)
 
-                        if passedlane is not None:
+                        if passedlane is not None and web_socket:
                             emit([passedlane, className])
             
         # displaying if the bounding boxes are obtained through detection or tracking
@@ -490,15 +512,25 @@ def run(
                 vid_writer[i].write(im0)
         total_frames += 1
 
-        # Print time (inference-only)
-        LOGGER.info(f"{s}{'' if len(det) else '(no detections), '}{dt[1].dt * 1E3:.1f}ms")
+        if inferencing:
+            # Print time (inference-only)
+            LOGGER.info(f"{s}{'' if len(det) else '(no detections), '}{dt[1].dt * 1E3:.1f}ms")
+        else:
+            # Print the time taken by dlib tracking
+            LOGGER.info(f"{s}{'' if len(det) else '(no detections), '} Dlib Tracking: {dlib_profiler.dt* 1E3:.1f}ms ")
 
         if not disable_centroid_tracking:
+
+            # Print the time taken by centroid tracking and lane pass checking
+            LOGGER.info(f"Centroid Tracking : {ct_profiler.dt * 1E3:.1f}ms, Lane Pass Checking: {lp_profiler.dt * 1E3:.1f}ms ")
+
             previous_objects = objects.copy()
 
     # Print results
     t = tuple(x.t / seen * 1E3 for x in dt)  # speeds per image
+    t1 = tuple(x.t / seen_dlib * 1E3 for x in (dlib_profiler, ct_profiler, lp_profiler))
     LOGGER.info(f'Speed: %.1fms pre-process, %.1fms inference, %.1fms NMS per image at shape {(1, 3, *imgsz)}' % t)
+    LOGGER.info(f'Speed: %.1fms dlib-tracking, %.1fms centroid-tracking, %.1fms lane passing checking per image' % t1)
     if save_txt or save_img:
         s = f"\n{len(list(save_dir.glob('labels/*.txt')))} labels saved to {save_dir / 'labels'}" if save_txt else ''
         LOGGER.info(f"Results saved to {colorstr('bold', save_dir)}{s}")
