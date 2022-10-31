@@ -195,11 +195,10 @@ def run(
         bs = 1  # batch_size
     vid_path, vid_writer = [None] * bs, [None] * bs
 
-    
     FPS = get_fps(source)
         
     # Running inference inference_per_second times a second
-    FRAMES_TO_SKIP = FPS / inference_per_second
+    FRAMES_TO_SKIP = FPS - inference_per_second
 
     # Run inference
     model.warmup(imgsz=(1 if pt else bs, 3, *imgsz))  # warmup
@@ -225,7 +224,7 @@ def run(
         # for profiling the lane passing detector
         lp_profiler = Profile()
 
-        ct=CentroidTracker(maxDisappeared=40,maxDistance=50)
+        ct=CentroidTracker(maxDisappeared=5,maxDistance=50)
 
         # keep track of object in previous step
         previous_objects = {}
@@ -479,7 +478,8 @@ def run(
                             emit([passedlane, className])
             
         # displaying if the bounding boxes are obtained through detection or tracking
-        annotator.box_label([10, 10, 10 + 20, 10 + 30], "Detecting" if (not FRAMES_TO_SKIP or total_frames % FRAMES_TO_SKIP == 0) else "Tracking", color=colors(9, True))
+        if save_img or save_crop or view_img: 
+            annotator.box_label([10, 10, 10 + 20, 10 + 30], "Detecting" if inferencing else "Tracking", color=colors(9, True))
 
         # Stream results
         im0 = annotator.result()
