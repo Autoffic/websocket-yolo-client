@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, List
 import socketio
 
 socketio_client = socketio.Client(logger=True, engineio_logger=True)
@@ -15,7 +15,7 @@ def disconnect() -> None:
     socketio_client.disconnect()
 
 # emitting the message, the message will be serialized
-def emit(message: Any) -> None:
+def emit(message: List) -> None:
     '''
     The message should be in the form of a list
     '''
