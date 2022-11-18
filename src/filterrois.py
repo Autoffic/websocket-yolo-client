@@ -22,6 +22,11 @@ def filter_roi(rois, parent_image, interpolation: bool=False, fill_empty: bool=F
     '''
 
     if(interpolation or fill_empty):
+        if rois.__len__() == 1: # if there is only one roi, there is no point in combining different images
+            roi = rois[0]
+            new_img = parent_image[int(roi[1]):int(roi[1] + roi[3]), int(roi[0]): int(roi[0] + roi[2])]
+            return new_img
+
         # cropping the image
         image_parts = []
         max_height = 0
