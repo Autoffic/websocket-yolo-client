@@ -52,12 +52,10 @@ Usage - ROI:
 """
 
 import argparse
-from faulthandler import disable
 import os
 import platform
 import sys
 from pathlib import Path
-from typing import OrderedDict
 import dlib
 from termcolor import colored
 
@@ -69,7 +67,7 @@ from yolov5.utils.augmentations import letterbox
 
 
 FILE = Path(__file__).resolve()
-ROOT = FILE.parents[0]  # src directory
+ROOT = FILE.parents[1]  # project directory
 if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))  # add ROOT to PATH
 ROOT = Path(os.path.relpath(ROOT, Path.cwd()))  # relative
@@ -197,7 +195,8 @@ def run(
 
     FPS = get_fps(source)
         
-    # Running inference inference_per_second times a second
+    # Running inference inference_per_second times a second 
+    # here time is relative to video i.e. fps frames is compared to 1 second
     FRAMES_TO_SKIP = FPS - inference_per_second
 
     # Run inference
