@@ -14,11 +14,11 @@ def get_rois(title: str, frame, number: int):
     if the number is 1 then only one roi is allowed
      '''
     if number == 0:
-        rois = [0, 0, frame.shape[0], frame.shape[1]]
+        rois = [[0, 0, frame.shape[0], frame.shape[1]]]
         return rois
     elif number == 1:
-        coordinates = cv2.selectROI(title, frame, showCrosshari=False)
-        rois = coordinates
+        coordinates = cv2.selectROI(title, frame, showCrosshair=False)
+        rois = [coordinates]
     else:
         coordinates = cv2.selectROIs(title, frame, showCrosshair=False)
 
