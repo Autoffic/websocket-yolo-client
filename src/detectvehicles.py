@@ -334,7 +334,7 @@ def run(
         rgb = cv2.cvtColor(im0s, cv2.COLOR_BGR2RGB)
 
         # doing inference only on few frames
-        inferencing = not FRAMES_TO_SKIP or ((total_frames % int(FRAMES_TO_SKIP)) == 0)
+        inferencing =not FRAMES_TO_SKIP or ((total_frames % int(FRAMES_TO_SKIP)) == 0)
         if inferencing:
 
             with dt[0]:

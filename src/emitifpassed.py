@@ -65,7 +65,7 @@ def hasPassedTheLineSegment(line: Line, lineStartPoint: Point, lineEndPoint: Poi
     lineFromPoints = calcLine(pointA, pointB) # another line segment
     return areLineSegmentsIntersecting(line, lineFromPoints, lineStartPoint, lineEndPoint, pointA, pointB)
 
-def passedLane(lanes:Dict[str, Lane], pointA: Tuple[int, int], pointB: Tuple[int, int]) -> str | None:
+def passedLane(lanes:Dict[str, Lane], pointA: Tuple[int, int], pointB: Tuple[int, int]) -> any:
     '''
         lanes : dictionary laneid and Lane
         pointA : tuple of one point
