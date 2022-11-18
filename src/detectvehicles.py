@@ -162,7 +162,8 @@ def run(
         number_of_rois=0,
         web_socket=False, # whether or not to transfer the data via websocket
         number_of_lanes=3, # total number of lanes to select
-        disable_centroid_tracking=False # to disable centroid tracking
+        disable_centroid_tracking=False, # to disable centroid tracking
+        inference_only=False # to find bounding box based on inference only
 ):
 
     source = str(source)
@@ -285,7 +286,7 @@ def run(
         rgb = cv2.cvtColor(im0s, cv2.COLOR_BGR2RGB)
 
         # doing inference only on few frames
-        inferencing = not FRAMES_TO_SKIP or ((total_frames % int(FRAMES_TO_SKIP)) == 0)
+        inferencing = inference_only or not FRAMES_TO_SKIP or ((total_frames % int(FRAMES_TO_SKIP)) == 0)
         if inferencing:
 
             with dt[0]:
@@ -571,6 +572,7 @@ def parse_opt():
     parser.add_argument('--web-socket', action='store_true', default=False, help='whether or not to transfer data through websocket')
     parser.add_argument('--number-of-lanes', type=int, default=3, help='total number of lanes to select in the given source')
     parser.add_argument('--disable-centroid-tracking', action='store_true', default=False, help="Either to disable centroid tracking")
+    parser.add_argument('--inference-only', action='store_true', default=False, help="Either to run only on inference")
     opt = parser.parse_args()
     opt.imgsz *= 2 if len(opt.imgsz) == 1 else 1  # expand
     print_args(vars(opt))
