@@ -290,7 +290,7 @@ class Lanes:
         returns a dictionary of lane id as key and lane object as value
         '''
         for i in range(self.number_of_lanes):
-            new_lane = Lane(self.img)
+            new_lane = Lane()
             new_lane.getLaneFromImage(self.img, f"Lane {i}")
             self.lanes_dict[f"lane{i}"] = new_lane
         
