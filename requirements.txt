@@ -2,3 +2,4 @@ numpy==1.23.3
 pandas==1.5.0
 websocket-client==1.4.1
 yolov5==6.2.1
+jupyter

@@ -62,6 +62,7 @@ from termcolor import colored
 import torch
 
 import numpy
+import csv
 
 from yolov5.utils.augmentations import letterbox
 
@@ -78,6 +79,11 @@ from yolov5.utils.general import (LOGGER, Profile, check_file, check_img_size, c
                            increment_path, non_max_suppression, print_args, scale_coords, strip_optimizer, xyxy2xywh)
 from yolov5.utils.plots import Annotator, colors, save_one_box
 from yolov5.utils.torch_utils import select_device, smart_inference_mode
+
+SRC = FILE.parents[0]  # src directory
+if str(SRC) not in sys.path:
+    sys.path.append(str(SRC))  # add SRC to PATH
+SRC = Path(os.path.relpath(SRC, Path.cwd()))  # relative
 
 from emittowebsocket import connect, disconnect, emit
 
@@ -162,7 +168,8 @@ def run(
         number_of_rois=0,
         web_socket=False, # whether or not to transfer the data via websocket
         number_of_lanes=3, # total number of lanes to select
-        disable_centroid_tracking=False # to disable centroid tracking
+        disable_centroid_tracking=False, # to disable centroid tracking
+        read_inputs_from_csv=False # When user inputs have been saved in csv formats
 ):
 
     source = str(source)
@@ -216,6 +223,47 @@ def run(
     lanes = Lanes(numpy.zeros((600, 600, 3), numpy.uint8)) # black image (just to make lanes globally accessible)
     rois = []
 
+    # finding out the source name
+    seperator = os.sep
+    video_name = source.rsplit(seperator, 1)[1]
+    video_name_without_extension = video_name.rsplit(".", 1)[0]
+    read_success_roi = False
+    read_success_lane = False
+
+    if read_inputs_from_csv:
+
+        rois_file_location = Path(str(ROOT) + "/resources/files/rois").resolve()
+        rois_file = Path(str(rois_file_location) + f"/{video_name_without_extension}.csv").resolve()
+
+        if rois_file.exists():
+            read_success_roi = True            
+
+            # rois
+            with open(str(rois_file), mode='r') as csv_file:
+                csv_reader = csv.DictReader(csv_file) # reader doesn't read the first line and treats it as key
+                for row in csv_reader:
+                    rois.append([float(row["start_point_x"]), float(row["start_point_y"]), float(row["width"]), float(row["height"])])
+            number_of_rois = rois.__len__()
+        else:
+            print("\nCouldn't find roi csv file for given video.\n")
+
+        lanes_file_location = Path(str(ROOT) + "/resources/files/lanes").resolve()
+        lanes_file = Path(str(lanes_file_location) + f"/{video_name_without_extension}.csv").resolve()
+
+        if lanes_file.exists():
+            read_success_lane = True
+
+            # lanes
+            with open(str(lanes_file), mode='r') as csv_file:
+                csv_reader = csv.DictReader(csv_file) # this reader doesn't read the first line and treats it as key
+                for row in csv_reader:
+                    lane = Lane()
+                    lane.start_point = (int(row["start_point_x"]), int(row["start_point_y"]))
+                    lane.end_point = (int(row["end_point_x"]), int(row["end_point_y"]))
+                    lanes.lanes_dict[row["lane_id"]] = lane
+        else:
+            print("\nCouldn't find lane csv file for given video.\n")
+
     if not disable_centroid_tracking:
         # for proifiling centroid tracker
         ct_profiler = Profile()
@@ -240,18 +288,19 @@ def run(
         if (total_frames == 0):
 
             if number_of_rois > 0:
-                rois = get_rois("Press Esc after selecting all the rois", im0s, number_of_rois)
+                if not read_success_roi: # if reading from csv isn't successful
+                    rois = get_rois("Press Esc after selecting all the rois", im0s, number_of_rois)
 
                 im0s = filter_roi(rois, im0s, interpolation=False, fill_empty=True)
-
 
             colored_text = colored("\nGetting the lanes in order\n", 'green')
             print(colored_text)
 
-            lanes = Lanes(im0s.copy(), number_of_lanes) # overriding the above lanes value 
+            if not read_success_lane: # if reading from csv isn't successful
+                lanes = Lanes(im0s.copy(), number_of_lanes) # overriding the above lanes value 
 
-            # asking for lanes in roi selected image
-            lanes.getAllData()
+                # asking for lanes in roi selected image
+                lanes.getAllData()
 
         if number_of_rois > 0:
 
@@ -571,6 +620,7 @@ def parse_opt():
     parser.add_argument('--web-socket', action='store_true', default=False, help='whether or not to transfer data through websocket')
     parser.add_argument('--number-of-lanes', type=int, default=3, help='total number of lanes to select in the given source')
     parser.add_argument('--disable-centroid-tracking', action='store_true', default=False, help="Either to disable centroid tracking")
+    parser.add_argument('--read-inputs-from-csv', action="store_true", default=False, help="When user inputs have been saved in csv formats")
     opt = parser.parse_args()
     opt.imgsz *= 2 if len(opt.imgsz) == 1 else 1  # expand
     print_args(vars(opt))
