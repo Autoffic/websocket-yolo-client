@@ -651,6 +651,7 @@ def parse_opt():
     parser.add_argument('--web-socket', action='store_true', default=False, help='whether or not to transfer data through websocket')
     parser.add_argument('--number-of-lanes', type=int, default=3, help='total number of lanes to select in the given source')
     parser.add_argument('--disable-centroid-tracking', action='store_true', default=False, help="Either to disable centroid tracking")
+    parser.add_argument('--read-inputs-from-csv', action="store_true", default=False, help="When user inputs have been saved in csv formats")
     parser.add_argument('--inference-only', action='store_true', default=False, help="Either to run only on inference")
     opt = parser.parse_args()
     opt.imgsz *= 2 if len(opt.imgsz) == 1 else 1  # expand
