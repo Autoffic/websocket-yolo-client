@@ -215,6 +215,9 @@ def run(
     dlib_profiler = Profile()
     seen_dlib = 0
 
+    # for profiling image operations
+    im_profilers = Profile(), Profile(), Profile()
+
     # keeping track of frame counts
     total_frames = 0
 
@@ -224,14 +227,15 @@ def run(
     lanes = Lanes(numpy.zeros((600, 600, 3), numpy.uint8)) # black image (just to make lanes globally accessible)
     rois = []
 
-    # finding out the source name
-    seperator = os.sep
-    video_name = source.rsplit(seperator, 1)[1]
-    video_name_without_extension = video_name.rsplit(".", 1)[0]
-    read_success_roi = False
-    read_success_lane = False
+    if not webcam:
+        # finding out the source name
+        seperator = os.sep
+        video_name = source.rsplit(seperator, 1)[1]
+        video_name_without_extension = video_name.rsplit(".", 1)[0]
+        read_success_roi = False
+        read_success_lane = False
 
-    if read_inputs_from_csv:
+    if read_inputs_from_csv and not webcam:
 
         rois_file_location = Path(str(ROOT) + "/resources/files/rois").resolve()
         rois_file = Path(str(rois_file_location) + f"/{video_name_without_extension}.csv").resolve()
@@ -289,50 +293,62 @@ def run(
         if (total_frames == 0):
 
             if number_of_rois > 0:
-                if not read_success_roi: # if reading from csv isn't successful
-                    rois = get_rois("Press Esc after selecting all the rois", im0s, number_of_rois)
+                if webcam or not read_success_roi: # if reading from csv isn't successful
+                    rois = get_rois("Press Esc after selecting all the rois", im0s[0] if webcam else im0s, number_of_rois)
 
-                im0s = filter_roi(rois, im0s, interpolation=False, fill_empty=True)
+                if webcam:
+                    im0s[0] = filter_roi(rois, im0s[0], interpolation=False, fill_empty=True)
+                else:
+                    im0s = filter_roi(rois, im0s, interpolation=False, fill_empty=True)
 
             colored_text = colored("\nGetting the lanes in order\n", 'green')
             print(colored_text)
 
-            if not read_success_lane: # if reading from csv isn't successful
-                lanes = Lanes(im0s.copy(), number_of_lanes) # overriding the above lanes value 
+            if webcam or not read_success_lane: # if reading from csv isn't successful
+                lanes = Lanes(im0s[0].copy() if webcam else im0s, number_of_lanes) # overriding the above lanes value 
 
                 # asking for lanes in roi selected image
                 lanes.getAllData()
 
         if number_of_rois > 0:
+            with im_profilers[0]:
+                # this is already done above so skipping in the very first frame
+                if not (total_frames == 0):
+                    img = filter_roi(rois, im0s[0] if webcam else im0s, interpolation=False, fill_empty=True)
+                    if webcam:
+                        im0s[0] = img
+                    else:
+                        im0s = img
 
-            # this is already done above so skipping in the very first frame
-            if not (total_frames == 0):
-                im0s = filter_roi(rois, im0s, interpolation=False, fill_empty=True)
+                # drawing the lanes
+                for lane_name, lane in lanes.lanes_dict.items():
+                    cv2.putText(im0s[0] if webcam else im0s, lane_name, lane.start_point, cv2.FONT_HERSHEY_SIMPLEX, 1, (88, 11, 22) , 2)
+                    cv2.line(im0s[0] if webcam else im0s, lane.start_point, lane.end_point, (255, 0, 0), 2)
 
-            # drawing the lanes
-            for lane_name, lane in lanes.lanes_dict.items():
-                cv2.putText(im0s, lane_name, lane.start_point, cv2.FONT_HERSHEY_SIMPLEX, 1, (88, 11, 22) , 2)
-                cv2.line(im0s, lane.start_point, lane.end_point, (255, 0, 0), 2)
-
-            '''
-            a copy of code from utils.dataloaders to resize the im accordingly
-            only valid for video stream, not for webcam and images
-            '''
-            #**********************************************************************
-            im0 = im0s.copy()
-            # transformation isn't implemented here
-            im = letterbox(im0, imgsz, stride=stride, auto=pt)[0]  # padded resize
-            im = im.transpose((2, 0, 1))[::-1]  # HWC to CHW, BGR to RGB
-            im = numpy.ascontiguousarray(im)  # contiguous
-            #**********************************************************************
+                '''
+                a copy of code from utils.dataloaders to resize the im accordingly
+                '''
+                if webcam:
+                    im0 = im0s.copy()
+                    im = np.stack([letterbox(x, imgsz, stride=stride, auto=pt)[0] for x in im0])  # resize
+                    im = im[..., ::-1].transpose((0, 3, 1, 2))  # BGR to RGB, BHWC to BCHW
+                    im = np.ascontiguousarray(im)  # contiguous
+                else:
+                    #**********************************************************************
+                    im0 = im0s.copy()
+                    # transformation isn't implemented here
+                    im = letterbox(im0, imgsz, stride=stride, auto=pt)[0]  # padded resize
+                    im = im.transpose((2, 0, 1))[::-1]  # HWC to CHW, BGR to RGB
+                    im = numpy.ascontiguousarray(im)  # contiguous
+                    #**********************************************************************
         else:
             # drawing the lanes
             for lane_name, lane in lanes.lanes_dict.items():
-                cv2.putText(im0s, lane_name, lane.start_point, cv2.FONT_HERSHEY_SIMPLEX, 1, (88, 11, 22) , 1)
-                cv2.line(im0s, lane.start_point, lane.end_point, (255, 0, 0), 2)
+                cv2.putText(im0s[i] if webcam else im0s, lane_name, lane.start_point, cv2.FONT_HERSHEY_SIMPLEX, 1, (88, 11, 22) , 1)
+                cv2.line(im0s if webcam else im0s, lane.start_point, lane.end_point, (255, 0, 0), 2)
 
         # since open'c cv's defuault channel is bgr and that of dlib's is rgb
-        rgb = cv2.cvtColor(im0s, cv2.COLOR_BGR2RGB)
+        rgb = cv2.cvtColor(im0s[0] if webcam else im0s, cv2.COLOR_BGR2RGB)
 
         # doing inference only on few frames
         inferencing = inference_only or not FRAMES_TO_SKIP or ((total_frames % int(FRAMES_TO_SKIP)) == 0)
@@ -377,7 +393,8 @@ def run(
                 annotator = Annotator(im0, line_width=line_thickness, example=str(names))
                 if len(det): 
                     # Rescale boxes from img_size to im0 size
-                    det[:, :4] = scale_coords(im.shape[2:], det[:, :4], im0.shape).round()
+                    with im_profilers[2]:
+                        det[:, :4] = scale_coords(im.shape[2:], det[:, :4], im0.shape).round()
 
                     # Print results
                     for c in det[:, -1].unique():
@@ -406,18 +423,23 @@ def run(
                         if save_crop:
                             save_one_box(xyxy, imc, file=save_dir / 'crops' / names[c] / f'{p.stem}.jpg', BGR=True)
 
-                        # construct a dlib rectangle object from the bounding
-                        # box coordinates and then start the dlib correlation
-                        # tracker
-                        tracker = dlib.correlation_tracker()
-                        rect = dlib.rectangle(xyxy[0], xyxy[1], xyxy[2], xyxy[3])
-                        tracker.start_track(rgb, rect)                        
+                        if not inference_only:
+                            # construct a dlib rectangle object from the bounding
+                            # box coordinates and then start the dlib correlation
+                            # tracker
+                            tracker = dlib.correlation_tracker()
+                            rect = dlib.rectangle(xyxy[0], xyxy[1], xyxy[2], xyxy[3])
+                            tracker.start_track(rgb, rect)                        
+                            tracker.start_track(rgb, rect)                        
+                            tracker.start_track(rgb, rect)                        
 
 
-                        # add the tracker to our list of trackers so we can
-                        # utilize it during skip frames
-                        # class name name and confidence is also added to keep it similar to the predictions
-                        trackers.append([tracker, conf, cls])              
+                            # add the tracker to our list of trackers so we can
+                            # utilize it during skip frames
+                            # class name name and confidence is also added to keep it similar to the predictions
+                            trackers.append([tracker, conf, cls])              
+                            trackers.append([tracker, conf, cls])              
+                            trackers.append([tracker, conf, cls])              
                         
         # determining the bounding box using correlation tracker
         else:
@@ -532,14 +554,15 @@ def run(
 
         # Stream results
         im0 = annotator.result()
-        if view_img:
-            if platform.system() == 'Linux' and p not in windows:
-                windows.append(p)
-                cv2.namedWindow(str(p), cv2.WINDOW_NORMAL | cv2.WINDOW_KEEPRATIO)  # allow window resize (Linux)
-                cv2.resizeWindow(str(p), im0.shape[1], im0.shape[0])
-            cv2.imshow(str(p), im0)
+        with im_profilers[1]:
+            if view_img:
+                if platform.system() == 'Linux' and p not in windows:
+                    windows.append(p)
+                    cv2.namedWindow(str(p), cv2.WINDOW_NORMAL | cv2.WINDOW_KEEPRATIO)  # allow window resize (Linux)
+                    cv2.resizeWindow(str(p), im0.shape[1], im0.shape[0])
+                cv2.imshow(str(p), im0)
 
-            cv2.waitKey(1) # wait 1ms
+                cv2.waitKey(1) # wait 1ms
 
         # Save results (image with detections)
         if save_img:
@@ -567,6 +590,13 @@ def run(
         else:
             # Print the time taken by dlib tracking
             LOGGER.info(f"{s}{'' if len(det) else '(no detections), '} Dlib Tracking: {dlib_profiler.dt* 1E3:.1f}ms ")
+        
+        if number_of_rois > 0:
+            LOGGER.info(f"Image operation (filtering): {im_profilers[0].dt * 1E3:.1f}ms")
+            if len(det):
+                LOGGER.info(f"Image operation (scaling): {im_profilers[2].dt * 1E3:.1f}ms")
+            if view_img:
+                LOGGER.info(f"Image operation (displaying)): {im_profilers[1].dt * 1E3:.1f}ms")
 
         if not disable_centroid_tracking:
 
