@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 import numpy as np
 import cv2
 from termcolor import colored
@@ -285,7 +285,7 @@ class Lanes:
 
         return points
 
-    def getAllData(self) -> dict[str, Lane]:
+    def getAllData(self) -> Dict[str, Lane]:
         '''
         returns a dictionary of lane id as key and lane object as value
         '''

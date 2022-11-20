@@ -1,4 +1,6 @@
-numpy==1.23.3
-pandas==1.5.0
-websocket-client==1.4.1
-yolov5==6.2.1
+numpy
+pandas
+python-socketio
+websocket-client
+yolov5==6.2.1  # there are some changes in newer version so, newer ones probably won't work
+jupyter
