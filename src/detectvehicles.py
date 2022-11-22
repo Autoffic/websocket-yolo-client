@@ -429,17 +429,12 @@ def run(
                             # tracker
                             tracker = dlib.correlation_tracker()
                             rect = dlib.rectangle(xyxy[0], xyxy[1], xyxy[2], xyxy[3])
-                            tracker.start_track(rgb, rect)                        
-                            tracker.start_track(rgb, rect)                        
-                            tracker.start_track(rgb, rect)                        
-
+                            tracker.start_track(rgb, rect)                                               
 
                             # add the tracker to our list of trackers so we can
                             # utilize it during skip frames
                             # class name name and confidence is also added to keep it similar to the predictions
-                            trackers.append([tracker, conf, cls])              
-                            trackers.append([tracker, conf, cls])              
-                            trackers.append([tracker, conf, cls])              
+                            trackers.append([tracker, conf, cls])                           
                         
         # determining the bounding box using correlation tracker
         else:
