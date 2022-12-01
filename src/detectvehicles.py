@@ -227,7 +227,10 @@ def run(
     lanes = Lanes(numpy.zeros((600, 600, 3), numpy.uint8)) # black image (just to make lanes globally accessible)
     rois = []
 
-    if not webcam:
+    if is_url:
+        video_name_without_extension = source.lower().rsplit('://', 1)[1].replace("/","")
+
+    elif not webcam:
         # finding out the source name
         seperator = os.sep
         video_name = source.rsplit(seperator, 1)[1]
@@ -235,7 +238,7 @@ def run(
         read_success_roi = False
         read_success_lane = False
 
-    if read_inputs_from_csv and not webcam:
+    if read_inputs_from_csv and (is_url or not webcam):
 
         rois_file_location = Path(str(ROOT) + "/resources/files/rois").resolve()
         rois_file = Path(str(rois_file_location) + f"/{video_name_without_extension}.csv").resolve()
@@ -293,7 +296,7 @@ def run(
         if (total_frames == 0):
 
             if number_of_rois > 0:
-                if webcam or not read_success_roi: # if reading from csv isn't successful
+                if (not is_url and webcam) or not read_success_roi: # if reading from csv isn't successful
                     rois = get_rois("Press Esc after selecting all the rois", im0s[0] if webcam else im0s, number_of_rois)
 
                 if webcam:
@@ -304,7 +307,7 @@ def run(
             colored_text = colored("\nGetting the lanes in order\n", 'green')
             print(colored_text)
 
-            if webcam or not read_success_lane: # if reading from csv isn't successful
+            if (not is_url and webcam) or not read_success_lane: # if reading from csv isn't successful
                 lanes = Lanes(im0s[0].copy() if webcam else im0s, number_of_lanes) # overriding the above lanes value 
 
                 # asking for lanes in roi selected image
@@ -344,7 +347,7 @@ def run(
         else:
             # drawing the lanes
             for lane_name, lane in lanes.lanes_dict.items():
-                cv2.putText(im0s[i] if webcam else im0s, lane_name, lane.start_point, cv2.FONT_HERSHEY_SIMPLEX, 1, (88, 11, 22) , 1)
+                cv2.putText(im0s[0] if webcam else im0s, lane_name, lane.start_point, cv2.FONT_HERSHEY_SIMPLEX, 1, (88, 11, 22) , 1)
                 cv2.line(im0s if webcam else im0s, lane.start_point, lane.end_point, (255, 0, 0), 2)
 
         # since open'c cv's defuault channel is bgr and that of dlib's is rgb

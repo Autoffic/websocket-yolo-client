@@ -1,0 +1,4 @@
+lane_id,start_point_x,start_point_y,end_point_x,end_point_y
+lane0,185,127,257,122
+lane1,257,205,343,200
+lane2,381,182,459,171

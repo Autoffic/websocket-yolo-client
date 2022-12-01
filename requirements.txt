@@ -4,3 +4,4 @@ python-socketio
 websocket-client
 yolov5==6.2.1  # there are some changes in newer version so, newer ones probably won't work
 jupyter
+google-colab
