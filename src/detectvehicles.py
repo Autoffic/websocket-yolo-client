@@ -235,8 +235,8 @@ def run(
         seperator = os.sep
         video_name = source.rsplit(seperator, 1)[1]
         video_name_without_extension = video_name.rsplit(".", 1)[0]
-        read_success_roi = False
-        read_success_lane = False
+    read_success_roi = False
+    read_success_lane = False
 
     if read_inputs_from_csv and (is_url or not webcam):
 
