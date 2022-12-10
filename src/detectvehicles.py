@@ -62,6 +62,7 @@ import torch
 
 import numpy
 import csv
+import logging
 
 from yolov5.utils.augmentations import letterbox
 
@@ -169,7 +170,12 @@ def run(
         number_of_lanes=3, # total number of lanes to select
         disable_centroid_tracking=False, # to disable centroid tracking
         read_inputs_from_csv=False, # When user inputs have been saved in csv formats
+        verbose=False, # Turn on debug outputs
 ):
+    # turn on debugging if verbose is true
+    INFO = logging.INFO
+    DEBUG = logging.DEBUG
+    LOGGER.setLevel(DEBUG if verbose else INFO)
 
     source = str(source)
     save_img = not nosave and not source.endswith('.txt')  # save inference images
@@ -244,7 +250,7 @@ def run(
                     rois.append([float(row["start_point_x"]), float(row["start_point_y"]), float(row["width"]), float(row["height"])])
             number_of_rois = rois.__len__()
         else:
-            print("\nCouldn't find roi csv file for given video.\n")
+            LOGGER.info("\nCouldn't find roi csv file for given video.\n")
 
         lanes_file_location = Path(str(ROOT) + "/resources/files/lanes").resolve()
         lanes_file = Path(str(lanes_file_location) + f"/{video_name_without_extension}.csv").resolve()
@@ -261,7 +267,7 @@ def run(
                     lane.end_point = (int(row["end_point_x"]), int(row["end_point_y"]))
                     lanes.lanes_dict[row["lane_id"]] = lane
         else:
-            print("\nCouldn't find lane csv file for given video.\n")
+            LOGGER.info("\nCouldn't find lane csv file for given video.\n")
 
     if not disable_centroid_tracking:
         # for proifiling centroid tracker
@@ -295,14 +301,16 @@ def run(
                 else:
                     im0s = filter_roi(rois, im0s, interpolation=False, fill_empty=True)
 
-            colored_text = colored("\nGetting the lanes in order\n", 'green')
-            print(colored_text)
-
             if (not is_url and webcam) or not read_success_lane: # if reading from csv isn't successful
-                lanes = Lanes(im0s[0].copy() if webcam else im0s, number_of_lanes) # overriding the above lanes value 
+                
+                if number_of_lanes > 0:
+                    colored_text = colored("\nGetting the lanes in order\n", 'green')
+                    LOGGER.info(colored_text)
 
-                # asking for lanes in roi selected image
-                lanes.getAllData()
+                    lanes = Lanes(im0s[0].copy() if webcam else im0s, number_of_lanes) # overriding the above lanes value 
+
+                    # asking for lanes in roi selected image
+                    lanes.getAllData()
 
         if number_of_rois > 0:
             with im_profilers[0]:
@@ -388,7 +396,6 @@ def run(
                     s += f"{n} {names[int(c)]}{'s' * (n > 1)}, "  # add to string
 
                 # Write results
-                print("\n******Using computationally intensive object detection**************")
                 for *xyxy, conf, cls in reversed(det):
                     if not disable_centroid_tracking:
                         # updating the bounding box list for centroid tracking
@@ -474,27 +481,27 @@ def run(
                 vid_writer[i].write(im0)
         total_frames += 1
 
-        LOGGER.info(f"{s}{'' if len(det) else '(no detections), '}{dt[1].dt * 1E3:.1f}ms")
+        LOGGER.debug(f"{s}{'' if len(det) else '(no detections), '}{dt[1].dt * 1E3:.1f}ms")
         
         if number_of_rois > 0:
-            LOGGER.info(f"Image operation (filtering): {im_profilers[0].dt * 1E3:.1f}ms")
+            LOGGER.debug(f"Image operation (filtering): {im_profilers[0].dt * 1E3:.1f}ms")
             if len(det):
-                LOGGER.info(f"Image operation (scaling): {im_profilers[2].dt * 1E3:.1f}ms")
+                LOGGER.debug(f"Image operation (scaling): {im_profilers[2].dt * 1E3:.1f}ms")
             if view_img:
-                LOGGER.info(f"Image operation (displaying)): {im_profilers[1].dt * 1E3:.1f}ms")
+                LOGGER.debug(f"Image operation (displaying)): {im_profilers[1].dt * 1E3:.1f}ms")
 
         if not disable_centroid_tracking:
 
             # Print the time taken by centroid tracking and lane pass checking
-            LOGGER.info(f"Centroid Tracking : {ct_profiler.dt * 1E3:.1f}ms, Lane Pass Checking: {lp_profiler.dt * 1E3:.1f}ms ")
+            LOGGER.debug(f"Centroid Tracking : {ct_profiler.dt * 1E3:.1f}ms, Lane Pass Checking: {lp_profiler.dt * 1E3:.1f}ms ")
 
             previous_objects = objects.copy()
 
     # Print results
     t = tuple(x.t / seen * 1E3 for x in dt)  # speeds per image
     t1 = tuple(x.t / seen * 1E3 for x in (ct_profiler, lp_profiler))
-    LOGGER.info(f'Speed: %.1fms pre-process, %.1fms inference, %.1fms NMS per image at shape {(1, 3, *imgsz)}' % t)
-    LOGGER.info(f'Speed: %.1fms centroid-tracking, %.1fms lane passing checking per image' % t1)
+    LOGGER.debug(f'Speed: %.1fms pre-process, %.1fms inference, %.1fms NMS per image at shape {(1, 3, *imgsz)}' % t)
+    LOGGER.debug(f'Speed: %.1fms centroid-tracking, %.1fms lane passing checking per image' % t1)
     if save_txt or save_img:
         s = f"\n{len(list(save_dir.glob('labels/*.txt')))} labels saved to {save_dir / 'labels'}" if save_txt else ''
         LOGGER.info(f"Results saved to {colorstr('bold', save_dir)}{s}")
@@ -537,6 +544,7 @@ def parse_opt():
     parser.add_argument('--number-of-lanes', type=int, default=3, help='total number of lanes to select in the given source')
     parser.add_argument('--disable-centroid-tracking', action='store_true', default=False, help="Either to disable centroid tracking")
     parser.add_argument('--read-inputs-from-csv', action="store_true", default=False, help="When user inputs have been saved in csv formats")
+    parser.add_argument('--verbose', action="store_true", default=False, help="Turn on the debug outputs on terminal")
     opt = parser.parse_args()
     opt.imgsz *= 2 if len(opt.imgsz) == 1 else 1  # expand
     print_args(vars(opt))
