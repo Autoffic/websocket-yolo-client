@@ -216,6 +216,7 @@ def run(
     total_frames = 0
 
     lanes = Lanes(numpy.zeros((600, 600, 3), numpy.uint8)) # black image (just to make lanes globally accessible)
+    rois = [] # for reading rois through file
 
     if is_url:
         video_name_without_extension = source.lower().rsplit('://', 1)[1].replace("/","")
