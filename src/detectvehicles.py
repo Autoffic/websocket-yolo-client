@@ -172,10 +172,13 @@ def run(
         read_inputs_from_csv=False, # When user inputs have been saved in csv formats
         verbose=False, # Turn on debug outputs
 ):
-    # turn on debugging if verbose is true
-    INFO = logging.INFO
-    DEBUG = logging.DEBUG
-    LOGGER.setLevel(DEBUG if verbose else INFO)
+
+    # turn on debugging
+    if verbose:
+        LOGGER.setLevel(logging.DEBUG)
+
+        for handler in LOGGER.handlers:
+            handler.setLevel(logging.DEBUG)
 
     source = str(source)
     save_img = not nosave and not source.endswith('.txt')  # save inference images
@@ -250,7 +253,7 @@ def run(
                     rois.append([float(row["start_point_x"]), float(row["start_point_y"]), float(row["width"]), float(row["height"])])
             number_of_rois = rois.__len__()
         else:
-            LOGGER.info("\nCouldn't find roi csv file for given video.\n")
+            LOGGER.error("\nCouldn't find roi csv file for given video.\n")
 
         lanes_file_location = Path(str(ROOT) + "/resources/files/lanes").resolve()
         lanes_file = Path(str(lanes_file_location) + f"/{video_name_without_extension}.csv").resolve()
@@ -267,7 +270,7 @@ def run(
                     lane.end_point = (int(row["end_point_x"]), int(row["end_point_y"]))
                     lanes.lanes_dict[row["lane_id"]] = lane
         else:
-            LOGGER.info("\nCouldn't find lane csv file for given video.\n")
+            LOGGER.error("\nCouldn't find lane csv file for given video.\n")
 
     if not disable_centroid_tracking:
         # for proifiling centroid tracker
