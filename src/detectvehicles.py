@@ -62,7 +62,14 @@ import torch
 
 import numpy
 import csv
+
 import logging
+# changing logging level won't work unless this is done due to some unknown reason
+# if other problem is found, this hacky fix should be removed
+#
+# using basicConfig to override the setting of log level from other parts (if any)
+# logging level isn't changed
+logging.basicConfig(level=logging.getLogger().getEffectiveLevel())
 
 from yolov5.utils.augmentations import letterbox
 
@@ -175,7 +182,11 @@ def run(
 
     # turn on debugging
     if verbose:
+        previous_logging_level = logging.getLogger().getEffectiveLevel()
+
         LOGGER.setLevel(logging.DEBUG)
+
+        LOGGER.info(f"Logging level changed from {logging.getLevelName(previous_logging_level)} to {logging.getLevelName(logging.DEBUG)}")
 
         for handler in LOGGER.handlers:
             handler.setLevel(logging.DEBUG)
