@@ -56,13 +56,20 @@ import os
 import platform
 import sys
 from pathlib import Path
-import dlib
 from termcolor import colored
 
 import torch
 
 import numpy
 import csv
+
+import logging
+# changing logging level won't work unless this is done due to some unknown reason
+# if other problem is found, this hacky fix should be removed
+#
+# using basicConfig to override the setting of log level from other parts (if any)
+# logging level isn't changed
+logging.basicConfig(level=logging.getLogger().getEffectiveLevel())
 
 from yolov5.utils.augmentations import letterbox
 
@@ -93,7 +100,7 @@ from Lanes import *
 
 from centroidtracker import CentroidTracker
 
-from emitifpassed import passedLane
+from src.checkpassingvehicle import passedLane
 
 FPS = 24  # assuming 24 fps from standard sources
 
@@ -170,8 +177,19 @@ def run(
         number_of_lanes=3, # total number of lanes to select
         disable_centroid_tracking=False, # to disable centroid tracking
         read_inputs_from_csv=False, # When user inputs have been saved in csv formats
-        inference_only=False # to find bounding box based on inference only
+        verbose=False, # Turn on debug outputs
 ):
+
+    # turn on debugging
+    if verbose:
+        previous_logging_level = logging.getLogger().getEffectiveLevel()
+
+        LOGGER.setLevel(logging.DEBUG)
+
+        LOGGER.info(f"Logging level changed from {logging.getLevelName(previous_logging_level)} to {logging.getLevelName(logging.DEBUG)}")
+
+        for handler in LOGGER.handlers:
+            handler.setLevel(logging.DEBUG)
 
     source = str(source)
     save_img = not nosave and not source.endswith('.txt')  # save inference images
@@ -211,21 +229,14 @@ def run(
     model.warmup(imgsz=(1 if pt else bs, 3, *imgsz))  # warmup
     seen, windows, dt = 0, [], (Profile(), Profile(), Profile())
 
-    # for profiling dlib
-    dlib_profiler = Profile()
-    seen_dlib = 0
-
     # for profiling image operations
     im_profilers = Profile(), Profile(), Profile()
 
     # keeping track of frame counts
     total_frames = 0
 
-    # this will be a list of list containing tracker, class name and confidence
-    # for simplicity the confidence is same as the object detection confidence
-    trackers = []
     lanes = Lanes(numpy.zeros((600, 600, 3), numpy.uint8)) # black image (just to make lanes globally accessible)
-    rois = []
+    rois = [] # for reading rois through file
 
     if is_url:
         video_name_without_extension = source.lower().rsplit('://', 1)[1].replace("/","")
@@ -253,7 +264,7 @@ def run(
                     rois.append([float(row["start_point_x"]), float(row["start_point_y"]), float(row["width"]), float(row["height"])])
             number_of_rois = rois.__len__()
         else:
-            print("\nCouldn't find roi csv file for given video.\n")
+            LOGGER.error("\nCouldn't find roi csv file for given video.\n")
 
         lanes_file_location = Path(str(ROOT) + "/resources/files/lanes").resolve()
         lanes_file = Path(str(lanes_file_location) + f"/{video_name_without_extension}.csv").resolve()
@@ -270,7 +281,7 @@ def run(
                     lane.end_point = (int(row["end_point_x"]), int(row["end_point_y"]))
                     lanes.lanes_dict[row["lane_id"]] = lane
         else:
-            print("\nCouldn't find lane csv file for given video.\n")
+            LOGGER.error("\nCouldn't find lane csv file for given video.\n")
 
     if not disable_centroid_tracking:
         # for proifiling centroid tracker
@@ -304,14 +315,16 @@ def run(
                 else:
                     im0s = filter_roi(rois, im0s, interpolation=False, fill_empty=True)
 
-            colored_text = colored("\nGetting the lanes in order\n", 'green')
-            print(colored_text)
-
             if (not is_url and webcam) or not read_success_lane: # if reading from csv isn't successful
-                lanes = Lanes(im0s[0].copy() if webcam else im0s, number_of_lanes) # overriding the above lanes value 
+                
+                if number_of_lanes > 0:
+                    colored_text = colored("\nGetting the lanes in order\n", 'green')
+                    LOGGER.info(colored_text)
 
-                # asking for lanes in roi selected image
-                lanes.getAllData()
+                    lanes = Lanes(im0s[0].copy() if webcam else im0s, number_of_lanes) # overriding the above lanes value 
+
+                    # asking for lanes in roi selected image
+                    lanes.getAllData()
 
         if number_of_rois > 0:
             with im_profilers[0]:
@@ -349,165 +362,69 @@ def run(
             for lane_name, lane in lanes.lanes_dict.items():
                 cv2.putText(im0s[0] if webcam else im0s, lane_name, lane.start_point, cv2.FONT_HERSHEY_SIMPLEX, 1, (88, 11, 22) , 1)
                 cv2.line(im0s if webcam else im0s, lane.start_point, lane.end_point, (255, 0, 0), 2)
-
-        # since open'c cv's defuault channel is bgr and that of dlib's is rgb
-        rgb = cv2.cvtColor(im0s[0] if webcam else im0s, cv2.COLOR_BGR2RGB)
-
-        # doing inference only on few frames
-        inferencing = inference_only or not FRAMES_TO_SKIP or ((total_frames % int(FRAMES_TO_SKIP)) == 0)
-        if inferencing:
-
-            with dt[0]:
-                im = torch.from_numpy(im).to(device)
-                im = im.half() if model.fp16 else im.float()  # uint8 to fp16/32
-                im /= 255  # 0 - 255 to 0.0 - 1.0
-                if len(im.shape) == 3:
-                    im = im[None]  # expand for batch dim
-
-            # Inference
-            with dt[1]:
-                visualize = increment_path(save_dir / Path(path).stem, mkdir=True) if visualize else False
-                pred = model(im, augment=augment, visualize=visualize)
-
-            # NMS
-            with dt[2]:
-                pred = non_max_suppression(pred, conf_thres, iou_thres, classes, agnostic_nms, max_det=max_det)
-
-            # Second-stage classifier (optional)
-            # pred = utils.general.apply_classifier(pred, classifier_model, im, im0s)
-
-            # Process predictions
-            for i, det in enumerate(pred):  # per image
-                seen += 1
-                if webcam:  # batch_size >= 1
-                    p, im0, frame = path[i], im0s[i].copy(), dataset.count
-                    s += f'{i}: '
-                else:
-                    p, im0, frame = path, im0s.copy(), getattr(dataset, 'frame', 0)
-
-                p = Path(p)  # to Path
-                save_path = str(save_dir / p.name)  # im.jpg
-                txt_path = str(save_dir / 'labels' / p.stem) + ('' if dataset.mode == 'image' else f'_{frame}')  # im.txt
-                s += '%gx%g ' % im.shape[2:]  # print string
-                gn = torch.tensor(im0.shape)[[1, 0, 1, 0]]  # normalization gain whwh
-                imc = im0.copy() if save_crop else im0  # for save_crop
-
-
-                annotator = Annotator(im0, line_width=line_thickness, example=str(names))
-                if len(det): 
-                    # Rescale boxes from img_size to im0 size
-                    with im_profilers[2]:
-                        det[:, :4] = scale_coords(im.shape[2:], det[:, :4], im0.shape).round()
-
-                    # Print results
-                    for c in det[:, -1].unique():
-                        n = (det[:, -1] == c).sum()  # detections per class
-                        s += f"{n} {names[int(c)]}{'s' * (n > 1)}, "  # add to string
-
-                    # Write results
-                    trackers = []
-                    print("\n******Using computationally intensive object detection**************")
-                    for *xyxy, conf, cls in reversed(det):
-
-                        if not disable_centroid_tracking:
-                            # updating the bounding box list for centroid tracking
-                            rects.append([xyxy[0], xyxy[1], xyxy[2], xyxy[3], cls])
-
-                        if save_txt:  # Write to file
-                            xywh = (xyxy2xywh(torch.tensor(xyxy).view(1, 4)) / gn).view(-1).tolist()  # normalized xywh
-                            line = (cls, *xywh, conf) if save_conf else (cls, *xywh)  # label format
-                            with open(f'{txt_path}.txt', 'a') as f:
-                                f.write(('%g ' * len(line)).rstrip() % line + '\n')
-
-                        if save_img or save_crop or view_img:  # Add bbox to image
-                            c = int(cls)  # integer class
-                            label = None if hide_labels else (names[c] if hide_conf else f'{names[c]} {conf:.2f}')
-                            annotator.box_label(xyxy, label, color=colors(c, True))
-                        if save_crop:
-                            save_one_box(xyxy, imc, file=save_dir / 'crops' / names[c] / f'{p.stem}.jpg', BGR=True)
-
-                        if not inference_only:
-                            # construct a dlib rectangle object from the bounding
-                            # box coordinates and then start the dlib correlation
-                            # tracker
-                            tracker = dlib.correlation_tracker()
-                            rect = dlib.rectangle(xyxy[0], xyxy[1], xyxy[2], xyxy[3])
-                            tracker.start_track(rgb, rect)                                               
-
-                            # add the tracker to our list of trackers so we can
-                            # utilize it during skip frames
-                            # class name name and confidence is also added to keep it similar to the predictions
-                            trackers.append([tracker, conf, cls])                           
-                        
-        # determining the bounding box using correlation tracker
-        else:
-
+    
+        with dt[0]:
+            im = torch.from_numpy(im).to(device)
+            im = im.half() if model.fp16 else im.float()  # uint8 to fp16/32
+            im /= 255  # 0 - 255 to 0.0 - 1.0
             if len(im.shape) == 3:
-                    im = im[None]  # expand for batch dim
+                im = im[None]  # expand for batch dim
+
+        # Inference
+        with dt[1]:
+            visualize = increment_path(save_dir / Path(path).stem, mkdir=True) if visualize else False
+            pred = model(im, augment=augment, visualize=visualize)
+
+        # NMS
+        with dt[2]:
+            pred = non_max_suppression(pred, conf_thres, iou_thres, classes, agnostic_nms, max_det=max_det)
+
+        # Second-stage classifier (optional)
+        # pred = utils.general.apply_classifier(pred, classifier_model, im, im0s)
+
+        # Process predictions
+        for i, det in enumerate(pred):  # per image
+            seen += 1
+            if webcam:  # batch_size >= 1
+                p, im0, frame = path[i], im0s[i].copy(), dataset.count
+                s += f'{i}: '
+            else:
+                p, im0, frame = path, im0s.copy(), getattr(dataset, 'frame', 0)
+
+            p = Path(p)  # to Path
+            save_path = str(save_dir / p.name)  # im.jpg
+            txt_path = str(save_dir / 'labels' / p.stem) + ('' if dataset.mode == 'image' else f'_{frame}')  # im.txt
+            s += '%gx%g ' % im.shape[2:]  # print string
+            gn = torch.tensor(im0.shape)[[1, 0, 1, 0]]  # normalization gain whwh
+            imc = im0.copy() if save_crop else im0  # for save_crop
+            annotator = Annotator(im0, line_width=line_thickness, example=str(names))
             
-            # loop over the trackers and append the predicitons
-            pred = []
-            with dlib_profiler:  # for profiling dlib's tracker
-                for tracker, conf, cls in trackers:
-                    # update the tracker and grab the updated position
-                    tracker.update(rgb)
-                    pos = tracker.get_position()
+            if len(det): 
 
-                    # unpack the position object
-                    startX = int(pos.left())
-                    startY = int(pos.top())
-                    endX = int(pos.right())
-                    endY = int(pos.bottom())
+                # Rescale boxes from img_size to im0 size
+                with im_profilers[2]:
+                    det[:, :4] = scale_coords(im.shape[2:], det[:, :4], im0.shape).round()
+                # Print results
+                for c in det[:, -1].unique():
+                    n = (det[:, -1] == c).sum()  # detections per class
+                    s += f"{n} {names[int(c)]}{'s' * (n > 1)}, "  # add to string
 
+                # Write results
+                for *xyxy, conf, cls in reversed(det):
                     if not disable_centroid_tracking:
-                        # updating bounding box list for centroid tracking
-                        rects.append([startX, startY, endX, endY, cls])
-
-                    pred.append([startX, startY, endX, endY, float(conf), float(cls)])
-            
-            pred = torch.tensor(pred)
-            pred = [pred]
-
-            for i, det in enumerate(pred):  # per image
-                seen_dlib += 1
-                if webcam:  # batch_size >= 1
-                    p, im0, frame = path[i], im0s[i].copy(), dataset.count
-                    s += f'{i}: '
-                else:
-                    p, im0, frame = path, im0s.copy(), getattr(dataset, 'frame', 0)
-
-                p = Path(p)  # to Path
-                save_path = str(save_dir / p.name)  # im.jpg
-                txt_path = str(save_dir / 'labels' / p.stem) + ('' if dataset.mode == 'image' else f'_{frame}')  # im.txt
-                s += '%gx%g ' % im.shape[2:]  # print string
-                gn = torch.tensor(im0.shape)[[1, 0, 1, 0]]  # normalization gain whwh
-                imc = im0.copy() if save_crop else im0  # for save_crop
-
-                annotator = Annotator(im0, line_width=line_thickness, example=str(names))
-
-                if len(det): 
-
-                    # Print results
-                    for c in det[:, -1].unique():
-                        n = (det[:, -1] == c).sum()  # detections per class
-                        s += f"{n} {names[int(c)]}{'s' * (n > 1)}, "  # add to string
-
-                    # Write results
-                    for *xyxy, conf, cls in reversed(det):
-
-                        if save_txt:  # Write to file
-                            xywh = (xyxy2xywh(torch.tensor(xyxy).view(1, 4)) / gn).view(-1).tolist()  # normalized xywh
-                            line = (cls, *xywh, conf) if save_conf else (cls, *xywh)  # label format
-                            with open(f'{txt_path}.txt', 'a') as f:
-                                f.write(('%g ' * len(line)).rstrip() % line + '\n')
-
-                        if save_img or save_crop or view_img:  # Add bbox to image
-                            c = int(cls)  # integer class
-                            label = None if hide_labels else (names[c] if hide_conf else f'{names[c]} {conf:.2f}')
-                            annotator.box_label(xyxy, label, color=colors(c, True))
-
-                        if save_crop:
-                            save_one_box(xyxy, imc, file=save_dir / 'crops' / names[c] / f'{p.stem}.jpg', BGR=True)
+                        # updating the bounding box list for centroid tracking
+                        rects.append([xyxy[0], xyxy[1], xyxy[2], xyxy[3], cls])
+                    if save_txt:  # Write to file
+                        xywh = (xyxy2xywh(torch.tensor(xyxy).view(1, 4)) / gn).view(-1).tolist()  # normalized xywh
+                        line = (cls, *xywh, conf) if save_conf else (cls, *xywh)  # label format
+                        with open(f'{txt_path}.txt', 'a') as f:
+                            f.write(('%g ' * len(line)).rstrip() % line + '\n')
+                    if save_img or save_crop or view_img:  # Add bbox to image
+                        c = int(cls)  # integer class
+                        label = None if hide_labels else (names[c] if hide_conf else f'{names[c]} {conf:.2f}')
+                        annotator.box_label(xyxy, label, color=colors(c, True))
+                    if save_crop:
+                        save_one_box(xyxy, imc, file=save_dir / 'crops' / names[c] / f'{p.stem}.jpg', BGR=True)                        
 
         if not disable_centroid_tracking:
             # updating the centroid tracker
@@ -546,10 +463,6 @@ def run(
                         if passedlane is not None and web_socket:
                             emit([passedlane, className])
             
-        # displaying if the bounding boxes are obtained through detection or tracking
-        if save_img or save_crop or view_img: 
-            annotator.box_label([10, 10, 10 + 20, 10 + 30], "Detecting" if inferencing else "Tracking", color=colors(9, True))
-
         # Stream results
         im0 = annotator.result()
         with im_profilers[1]:
@@ -582,32 +495,27 @@ def run(
                 vid_writer[i].write(im0)
         total_frames += 1
 
-        if inferencing:
-            # Print time (inference-only)
-            LOGGER.info(f"{s}{'' if len(det) else '(no detections), '}{dt[1].dt * 1E3:.1f}ms")
-        else:
-            # Print the time taken by dlib tracking
-            LOGGER.info(f"{s}{'' if len(det) else '(no detections), '} Dlib Tracking: {dlib_profiler.dt* 1E3:.1f}ms ")
+        LOGGER.debug(f"{s}{'' if len(det) else '(no detections), '}{dt[1].dt * 1E3:.1f}ms")
         
         if number_of_rois > 0:
-            LOGGER.info(f"Image operation (filtering): {im_profilers[0].dt * 1E3:.1f}ms")
+            LOGGER.debug(f"Image operation (filtering): {im_profilers[0].dt * 1E3:.1f}ms")
             if len(det):
-                LOGGER.info(f"Image operation (scaling): {im_profilers[2].dt * 1E3:.1f}ms")
+                LOGGER.debug(f"Image operation (scaling): {im_profilers[2].dt * 1E3:.1f}ms")
             if view_img:
-                LOGGER.info(f"Image operation (displaying)): {im_profilers[1].dt * 1E3:.1f}ms")
+                LOGGER.debug(f"Image operation (displaying)): {im_profilers[1].dt * 1E3:.1f}ms")
 
         if not disable_centroid_tracking:
 
             # Print the time taken by centroid tracking and lane pass checking
-            LOGGER.info(f"Centroid Tracking : {ct_profiler.dt * 1E3:.1f}ms, Lane Pass Checking: {lp_profiler.dt * 1E3:.1f}ms ")
+            LOGGER.debug(f"Centroid Tracking : {ct_profiler.dt * 1E3:.1f}ms, Lane Pass Checking: {lp_profiler.dt * 1E3:.1f}ms ")
 
             previous_objects = objects.copy()
 
     # Print results
     t = tuple(x.t / seen * 1E3 for x in dt)  # speeds per image
-    t1 = tuple(x.t / seen_dlib * 1E3 for x in (dlib_profiler, ct_profiler, lp_profiler))
-    LOGGER.info(f'Speed: %.1fms pre-process, %.1fms inference, %.1fms NMS per image at shape {(1, 3, *imgsz)}' % t)
-    LOGGER.info(f'Speed: %.1fms dlib-tracking, %.1fms centroid-tracking, %.1fms lane passing checking per image' % t1)
+    t1 = tuple(x.t / seen * 1E3 for x in (ct_profiler, lp_profiler))
+    LOGGER.debug(f'Speed: %.1fms pre-process, %.1fms inference, %.1fms NMS per image at shape {(1, 3, *imgsz)}' % t)
+    LOGGER.debug(f'Speed: %.1fms centroid-tracking, %.1fms lane passing checking per image' % t1)
     if save_txt or save_img:
         s = f"\n{len(list(save_dir.glob('labels/*.txt')))} labels saved to {save_dir / 'labels'}" if save_txt else ''
         LOGGER.info(f"Results saved to {colorstr('bold', save_dir)}{s}")
@@ -650,7 +558,7 @@ def parse_opt():
     parser.add_argument('--number-of-lanes', type=int, default=3, help='total number of lanes to select in the given source')
     parser.add_argument('--disable-centroid-tracking', action='store_true', default=False, help="Either to disable centroid tracking")
     parser.add_argument('--read-inputs-from-csv', action="store_true", default=False, help="When user inputs have been saved in csv formats")
-    parser.add_argument('--inference-only', action='store_true', default=False, help="Either to run only on inference")
+    parser.add_argument('--verbose', action="store_true", default=False, help="Turn on the debug outputs on terminal")
     opt = parser.parse_args()
     opt.imgsz *= 2 if len(opt.imgsz) == 1 else 1  # expand
     print_args(vars(opt))
