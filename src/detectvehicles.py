@@ -100,7 +100,7 @@ from Lanes import *
 
 from centroidtracker import CentroidTracker
 
-from src.checkpassingvehicle import passedLane
+from checkpassingvehicle import passedLane
 
 FPS = 24  # assuming 24 fps from standard sources
 
@@ -460,7 +460,7 @@ def run(
                     if object_centroid_in_previous_step is not None:
                         passedlane = passedLane(lanes.lanes_dict, object_centroid_in_this_step, object_centroid_in_previous_step)
 
-                        if passedlane is not None and web_socket:
+                        if (passedlane != "None") and web_socket:
                             emit([passedlane, className])
             
         # Stream results

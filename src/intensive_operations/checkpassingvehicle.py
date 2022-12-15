@@ -1,27 +1,29 @@
 import numpy as np
-import collections
+import cython
 
 from typing import Dict
 from typing import Tuple
 
 from Lanes import *
 
+@cython.cclass
 class Line:
     '''
     A equation of line (ax + by + c = 0)
     '''
 
-    def __init__(self, a, b, c):
-        self.a = a
-        self.b = b
-        self.c = c
+    def __init__(self, a: cython.int, b: cython.int, c: cython.int):
+        self.a: cython.int = a
+        self.b: cython.int = b
+        self.c: cython.int = c
 
+@cython.cclass
 class Point:
     '''
     A point (x, y)
     '''
 
-    def __init__(self, x, y):
+    def __init__(self, x: cython.int, y: cython.int):
         self.x = x
         self.y = y
 
@@ -41,7 +43,7 @@ def calcLine(point1: Point, point2: Point) -> Line: #line's equation calculation
 
 def areLineSegmentsIntersecting(line1: Line, line2: Line,
                         Line1EndPoint1: Point, Line1EndPoint2: Point,
-                        Line2EndPoint1: Point, Line2EndPoint2: Point) -> bool:
+                        Line2EndPoint1: Point, Line2EndPoint2: Point) -> cython.int:
 
     det = line1.a * line2.b - line2.a * line1.b
     if det == 0:
@@ -58,14 +60,14 @@ def areLineSegmentsIntersecting(line1: Line, line2: Line,
         else:
             return False #lines segments are intersecting but outside of the line segments
 
-def hasPassedTheLineSegment(line: Line, lineStartPoint: Point, lineEndPoint: Point, pointA: Point, pointB: Point) -> bool:
+def hasPassedTheLineSegment(line: Line, lineStartPoint: Point, lineEndPoint: Point, pointA: Point, pointB: Point) -> cython.int:
     '''
         Returns true if the points are on different sides of the line segment
     '''
     lineFromPoints = calcLine(pointA, pointB) # another line segment
     return areLineSegmentsIntersecting(line, lineFromPoints, lineStartPoint, lineEndPoint, pointA, pointB)
 
-def passedLane(lanes:Dict[str, Lane], pointA: Tuple[int, int], pointB: Tuple[int, int]) -> any:
+def passedLane(lanes:Dict[str, Lane], pointA: Tuple[int, int], pointB: Tuple[int, int]) -> str:
     '''
         lanes : dictionary laneid and Lane
         pointA : tuple of one point
@@ -89,7 +91,7 @@ def passedLane(lanes:Dict[str, Lane], pointA: Tuple[int, int], pointB: Tuple[int
             return laneid
     
     # if the points aren't in the opposite side of any lanes
-    return None
+    return "None"
     
 
 # test code

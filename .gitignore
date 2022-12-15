@@ -192,3 +192,6 @@ yolov5?.*
 
 *.cfg
 etc
+
+# ignoring cython generated annotation files
+*.html
