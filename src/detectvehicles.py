@@ -262,7 +262,8 @@ def run(
                 csv_reader = csv.DictReader(csv_file) # reader doesn't read the first line and treats it as key
                 for row in csv_reader:
                     rois.append([float(row["start_point_x"]), float(row["start_point_y"]), float(row["width"]), float(row["height"])])
-            number_of_rois = rois.__len__()
+            rois = numpy.asarray(rois).astype('i')# since rois are stored as indices
+            number_of_rois = rois.shape[0]
         else:
             LOGGER.error("\nCouldn't find roi csv file for given video.\n")
 
@@ -308,7 +309,7 @@ def run(
 
             if number_of_rois > 0:
                 if (not is_url and webcam) or not read_success_roi: # if reading from csv isn't successful
-                    rois = get_rois("Press Esc after selecting all the rois", im0s[0] if webcam else im0s, number_of_rois)
+                    rois = numpy.asarray(get_rois("Press Esc after selecting all the rois", im0s[0] if webcam else im0s, number_of_rois)).astype('i')
 
                 if webcam:
                     im0s[0] = filter_roi(rois, im0s[0], interpolation=False, fill_empty=True)

@@ -11,23 +11,34 @@ class Line:
     '''
     A equation of line (ax + by + c = 0)
     '''
+    a = cython.declare(cython.double, visibility='public')
+    b = cython.declare(cython.double, visibility='public')
+    c = cython.declare(cython.double, visibility='public')
 
-    def __init__(self, a: cython.int, b: cython.int, c: cython.int):
-        self.a: cython.int = a
-        self.b: cython.int = b
-        self.c: cython.int = c
+    def __init__(self, a: cython.double, b: cython.double, c: cython.double):
+        self.a: cython.double = a
+        self.b: cython.double = b
+        self.c: cython.double = c
 
 @cython.cclass
 class Point:
     '''
     A point (x, y)
     '''
+    x = cython.declare(cython.int, visibility='public')
+    y = cython.declare(cython.int, visibility='public')
 
     def __init__(self, x: cython.int, y: cython.int):
-        self.x = x
-        self.y = y
+        self.x: cython.int = x
+        self.y: cython.int = y
 
+@cython.cfunc
+@cython.exceptval(check=False)
 def calcLine(point1: Point, point2: Point) -> Line: #line's equation calculation
+    a: cython.double 
+    b: cython.double
+    c: cython.double
+
     if point2.y - point1.y == 0:
          a = 0
          b = -1.0
@@ -41,25 +52,27 @@ def calcLine(point1: Point, point2: Point) -> Line: #line's equation calculation
     c = (-a * point1.x) - b * point1.y
     return Line(a, b, c)
 
+@cython.cfunc
 def areLineSegmentsIntersecting(line1: Line, line2: Line,
                         Line1EndPoint1: Point, Line1EndPoint2: Point,
                         Line2EndPoint1: Point, Line2EndPoint2: Point) -> cython.int:
 
-    det = line1.a * line2.b - line2.a * line1.b
+    det: cython.double = line1.a * line2.b - line2.a * line1.b
     if det == 0:
-        return False #lines are parallel
+        return 0 #lines are parallel
     else:
-        x = (line2.b * -line1.c - line1.b * -line2.c)/det # x coordinate of intersecting point
-        y = (line1.a * -line2.c - line2.a * -line1.c)/det # y coordinate of intersecting point
+        x: cython.double = (line2.b * -line1.c - line1.b * -line2.c)/det # x coordinate of intersecting point
+        y: cython.double = (line1.a * -line2.c - line2.a * -line1.c)/det # y coordinate of intersecting point
 
         if x <= max(Line1EndPoint1.x, Line1EndPoint2.x) and x >= min(Line1EndPoint1.x, Line1EndPoint2.x) and \
             y <= max(Line1EndPoint1.y, Line1EndPoint2.y) and y >= min(Line1EndPoint1.y, Line1EndPoint2.y) and \
             x <= max(Line2EndPoint1.x, Line2EndPoint2.x) and x >= min(Line2EndPoint1.x, Line2EndPoint2.x) and \
             y <= max(Line2EndPoint1.y, Line2EndPoint2.y) and y >= min(Line2EndPoint1.y, Line2EndPoint2.y):
-            return True #line segments are intersecting inside the line segments
+            return 1 #line segments are intersecting inside the line segments
         else:
-            return False #lines segments are intersecting but outside of the line segments
+            return 0 #lines segments are intersecting but outside of the line segments
 
+@cython.cfunc
 def hasPassedTheLineSegment(line: Line, lineStartPoint: Point, lineEndPoint: Point, pointA: Point, pointB: Point) -> cython.int:
     '''
         Returns true if the points are on different sides of the line segment

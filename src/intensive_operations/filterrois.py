@@ -2,11 +2,22 @@
 #cython: language_level=3
 #cython: infer_types=True
 
-import  numpy
+import numpy
 import cv2
 import cython
+from cython import CythonDotParallel
 
-def filter_roi(rois: numpy.ndarray, parent_image: numpy.ndarray, interpolation: bool =False, fill_empty: bool=False):
+
+def display_and_wait(frame):
+
+    cv2.imshow("im0s", frame)
+    key = cv2.waitKey(0) & 0xff
+
+    # if the `q` key was pressed exit
+    if key == ord("q"):
+        cv2.destroyAllWindows()
+
+def filter_roi(rois: cython.int[:, :], parent_image: cython.uchar[:, :, :], interpolation: bool =False, fill_empty: bool=False):
     '''
     Filters out the roi from the image.
     
@@ -25,54 +36,47 @@ def filter_roi(rois: numpy.ndarray, parent_image: numpy.ndarray, interpolation: 
     @param roi: array of region of interests in the format [xStart, yStart, width, height]
     @param parent_image: the image on which roi was selected
     '''
+    number_of_rois: cython.int = rois.shape[0]
 
     if(interpolation or fill_empty):
-        number_of_rois: cython.int = rois.__len__()
 
         if number_of_rois == 1: # if there is only one roi, there is no point in combining different images
             roi = rois[0]
-            new_img = parent_image[int(roi[1]):int(roi[1] + roi[3]), int(roi[0]): int(roi[0] + roi[2])]
-            return new_img
+            return numpy.asarray(parent_image[roi[1]:roi[1] + roi[3], roi[0]: roi[0] + roi[2]])
 
-        # cropping the image
-        image_parts = []
-        max_height: cython.int = 0
-        max_width: cython.int = 0
-        total_width: cython.int = 0
-  
-        for roi in rois:  # different parts of the image ( region of interest array )
+        numpy_array_of_rois_memory_view = numpy.asarray(rois)
+        # placeholders for the images (black image)
+        if fill_empty: # constructing images of max_height and max_width among the rois 
+            image_parts = numpy.zeros((number_of_rois, int(max(numpy_array_of_rois_memory_view[:, 3])), int(max(numpy_array_of_rois_memory_view[:, 2])), parent_image.shape[2]), dtype=numpy.ubyte)
+        else: # the images should be copied as is ( resizing should not be done here )
+            temp_list = []
+            for i in range(number_of_rois):
+                temp_list.append(numpy.zeros((rois[3], rois[2], parent_image.shape[2]), dtype=numpy.ubyte))
 
-            image_parts.append(parent_image[int(roi[1]):int(roi[1] + roi[3]), int(roi[0]): int(roi[0] + roi[2])])
+            image_parts = numpy.asarray(temp_list)
 
-            # this is done for resizing all the images to the same size
-            height, width =  image_parts[-1].shape[:2]
-            max_height = max(max_height, height)
-            max_width = max(max_width, width)
-            total_width += width
+        image_parts_memview: cython.uchar[:,:,:,:] = image_parts
 
-        
+        i: cython.int = 0
+        for i in range(number_of_rois):  # different parts of the image ( region of interest array )
+
+            startRoiY: cython.int = rois[i, 1]
+            imgHeight: cython.int = rois[i,3]
+            startRoiX: cython.int = rois[i,0]
+            imgWidth: cython.int = rois[i,2]
+            imgChannel: cython.int = parent_image.shape[2]
+
+            for j in range(imgHeight):
+                for k in range(imgWidth):
+                    for l in range(imgChannel):
+                        image_parts_memview[i,j,k,l] = parent_image[startRoiY + j, startRoiX + k, l]
+                    
         # using interpolation for resizing, produces distorted image if the image sizes differs a lot
         if interpolation:
+            max_height = max(numpy_array_of_rois_memory_view[:3])
+            max_width = max(numpy_array_of_rois_memory_view[:2])
             for i, image in enumerate(image_parts):
                 image_parts[i] = cv2.resize(image, [max_height, max_width])
-
-        elif fill_empty:
-            resized_image_array = []
-            for image_part in image_parts:
-
-                # the dimension and channel of image part
-                img_height = int(image_part.shape[0])
-                img_width = int(image_part.shape[1])
-                img_channel = image_part.shape[2]
-
-                # appending a fully black image of max_height and max_width
-                resized_image_array.append(numpy.zeros((max_height, max_width, img_channel), image_part.dtype))
-
-                # only copying the filled parts and leaving the rest as the dark image
-
-                resized_image_array[-1][0:img_height, 0:img_width] = image_part[0:img_height, 0:img_width]
-
-            image_parts = resized_image_array
 
         return_image = numpy.concatenate(image_parts, axis=1)
 
@@ -82,8 +86,8 @@ def filter_roi(rois: numpy.ndarray, parent_image: numpy.ndarray, interpolation: 
 
         for roi in rois: 
             # stitching the part image into the whole image
-            whole_image[int(roi[1]):int(roi[1] + roi[3]), int(roi[0]): int(roi[0] + roi[2])] = \
-                parent_image[int(roi[1]):int(roi[1] + roi[3]), int(roi[0]): int(roi[0] + roi[2])]
+            whole_image[roi[1]:roi[1] + roi[3], roi[0]: roi[0] + roi[2]] = \
+                parent_image[roi[1]:roi[1] + roi[3], roi[0]: roi[0] + roi[2]]
 
         return_image = whole_image
 
