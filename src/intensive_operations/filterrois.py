@@ -5,8 +5,7 @@
 import numpy
 import cv2
 import cython
-from cython import CythonDotParallel
-
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 def display_and_wait(frame):
 
@@ -17,7 +16,25 @@ def display_and_wait(frame):
     if key == ord("q"):
         cv2.destroyAllWindows()
 
-def filter_roi(rois: cython.int[:, ::1], parent_image: cython.uchar[:, :, ::1], interpolation: bool =False, fill_empty: bool=False):
+@cython.boundscheck(False)
+@cython.wraparound(False)
+@cython.ccall
+@cython.returns(cython.uchar[:,:,::1])
+def copy_parallely(indexToCopy: cython.int, sourceImage: cython.uchar[:,:,::1], destinationImage: cython.uchar[:,:,::1], rois: cython.int[:,::1]):
+    startRoiY: cython.int = rois[indexToCopy,1]
+    imgHeight: cython.int = rois[indexToCopy,3]
+    startRoiX: cython.int = rois[indexToCopy,0]
+    imgWidth:  cython.int = rois[indexToCopy,2]
+    imgChannel:cython.int = sourceImage.shape[2]
+        
+    for j in range(imgHeight):
+        for k in range(imgWidth):
+            for l in range(imgChannel):
+                destinationImage[j,k,l] = sourceImage[startRoiY + j, startRoiX + k, l]
+                    
+    return destinationImage  
+
+def filter_roi(rois: cython.int[:, ::1], parent_image: cython.uchar[:, :, ::1], interpolation: cython.bint =False, fill_empty: cython.bint=False):
     '''
     Filters out the roi from the image.
     
@@ -39,10 +56,8 @@ def filter_roi(rois: cython.int[:, ::1], parent_image: cython.uchar[:, :, ::1], 
 
     #converting to c types
     number_of_rois: cython.int = rois.shape[0]
-    c_interpolation: cython.bint = interpolation
-    c_fill_empty: cython.bint = fill_empty
 
-    if(c_interpolation or c_fill_empty):
+    if(interpolation or fill_empty):
 
         if number_of_rois == 1: # if there is only one roi, there is no point in combining different images
             roi = rois[0]
@@ -50,27 +65,22 @@ def filter_roi(rois: cython.int[:, ::1], parent_image: cython.uchar[:, :, ::1], 
 
         numpy_array_of_rois_memory_view = numpy.asarray(rois)
 
-        # placeholders for the images (black image)
-        if fill_empty: # constructing images of max_height and max_width among the rois 
+        if fill_empty: # constructing images of max_height and max_width among the rois
+            # placeholders for the images (black image)
             image_parts = numpy.zeros((number_of_rois, int(max(numpy_array_of_rois_memory_view[:, 3])), int(max(numpy_array_of_rois_memory_view[:, 2])), parent_image.shape[2]), dtype=numpy.ubyte)
 
             image_parts_memview: cython.uchar[:,:,:,::1] = image_parts
+                        
+            with ThreadPoolExecutor(max_workers=number_of_rois) as executor:
+                copy_operations = {executor.submit(copy_parallely, i, parent_image, image_parts_memview[i], rois): i for i in range(number_of_rois)}
 
-            i: cython.int = 0
-            with cython.nogil:
-                for i in range(number_of_rois):  # different parts of the image ( region of interest array )
+                completed = 0
+                for operation in as_completed(copy_operations):
+                    completed += 1
+                    if completed > number_of_rois - 1:
+                        returned_memview = copy_operations[operation]
+                        return numpy.concatenate(image_parts, axis=1)         
 
-                    startRoiY: cython.int = rois[i, 1]
-                    imgHeight: cython.int = rois[i,3]
-                    startRoiX: cython.int = rois[i,0]
-                    imgWidth: cython.int = rois[i,2]
-                    imgChannel: cython.int = parent_image.shape[2]
-
-                    for j in range(imgHeight):
-                        for k in range(imgWidth):
-                            for l in range(imgChannel):
-                                image_parts_memview[i,j,k,l] = parent_image[startRoiY + j, startRoiX + k, l]
-                            
         # using interpolation for resizing, produces distorted image if the image sizes differs a lot
         elif interpolation:
              # very much inefficient
@@ -85,8 +95,8 @@ def filter_roi(rois: cython.int[:, ::1], parent_image: cython.uchar[:, :, ::1], 
 
             for i, image in enumerate(image_parts):
                 image_parts[i] = cv2.resize(image, [max_height, max_width])
-
-        return_image = numpy.concatenate(image_parts, axis=1)
+            
+            return numpy.concatenate(image_parts, axis=1)
 
     else:
         # creating a bigger empty image to place the image parts
@@ -97,6 +107,4 @@ def filter_roi(rois: cython.int[:, ::1], parent_image: cython.uchar[:, :, ::1], 
             whole_image[roi[1]:roi[1] + roi[3], roi[0]: roi[0] + roi[2]] = \
                 parent_image[roi[1]:roi[1] + roi[3], roi[0]: roi[0] + roi[2]]
 
-        return_image = whole_image
-
-    return return_image
+        return whole_image
