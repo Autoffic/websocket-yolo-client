@@ -58,6 +58,8 @@ import sys
 from pathlib import Path
 from termcolor import colored
 
+import time
+
 import torch
 
 import numpy
@@ -220,6 +222,9 @@ def run(
     vid_path, vid_writer = [None] * bs, [None] * bs
 
     FPS = get_fps(source)
+
+    # for calculating display fps
+    display_previous_time = 0
         
     # Running inference inference_per_second times a second 
     # here time is relative to video i.e. fps frames is compared to 1 second
@@ -456,20 +461,27 @@ def run(
                         cv2.circle(im0, (centroid[0], centroid[1]), 4, (255, 255, 255), -1)
 
                     
-                    object_centroid_in_this_step = centroid
-                    object_centroid_in_previous_step = previous_objects.get(objectID)
+                    object_centroid_in_this_step = (centroid[0], centroid[1])
+                    if previous_objects.get(objectID) is not None:
+                        object_centroid_in_previous_step = (previous_objects.get(objectID)[0], previous_objects.get(objectID)[1])
 
-                    if number_of_lanes > 0 and object_centroid_in_previous_step is not None:
-                        passedlane = passedLane(lanes.lanes_dict, object_centroid_in_this_step, object_centroid_in_previous_step)
+                        if number_of_lanes > 0 and object_centroid_in_previous_step is not None:
+                            passedlane = passedLane(lanes.lanes_dict, object_centroid_in_this_step, object_centroid_in_previous_step)
 
-                        if (passedlane != "None") and web_socket:
-                            emit([passedlane, className])
-            
+                            if (passedlane != "None") and web_socket:
+                                emit([passedlane, className])
+        # showing fps
+        if view_img:
+            time_taken = time.time() - display_previous_time
+            display_previous_time = time.time()
+            annotator.box_label((10, 10, 50, 25), f"FPS: {int(1/time_taken)}", color=colors(8, True))
+
         # Stream results
         im0 = annotator.result()
         with im_profilers[1]:
             if view_img:
                 if platform.system() == 'Linux' and p not in windows:
+                    
                     windows.append(p)
                     cv2.namedWindow(str(p), cv2.WINDOW_NORMAL | cv2.WINDOW_KEEPRATIO)  # allow window resize (Linux)
                     cv2.resizeWindow(str(p), im0.shape[1], im0.shape[0])
