@@ -1655,9 +1655,6 @@ static CYTHON_INLINE PyObject* __Pyx_dict_iterator(PyObject* dict, int is_dict, 
 static CYTHON_INLINE int __Pyx_dict_iter_next(PyObject* dict_or_iter, Py_ssize_t orig_length, Py_ssize_t* ppos,
                                               PyObject** pkey, PyObject** pvalue, PyObject** pitem, int is_dict);
 
-/* ExtTypeTest.proto */
-static CYTHON_INLINE int __Pyx_TypeTest(PyObject *obj, PyTypeObject *type);
-
 /* PySequenceContains.proto */
 static CYTHON_INLINE int __Pyx_PySequence_ContainsTF(PyObject* item, PyObject* seq, int eq) {
     int result = PySequence_Contains(seq, item);
@@ -2069,6 +2066,8 @@ static const char __pyx_k_pointB[] = "pointB";
 static const char __pyx_k_points[] = "points";
 static const char __pyx_k_reduce[] = "__reduce__";
 static const char __pyx_k_return[] = "return";
+static const char __pyx_k_tupleA[] = "tupleA";
+static const char __pyx_k_tupleB[] = "tupleB";
 static const char __pyx_k_typing[] = "typing";
 static const char __pyx_k_update[] = "update";
 static const char __pyx_k_disable[] = "disable";
@@ -2213,6 +2212,8 @@ static PyObject *__pyx_n_s_state;
 static PyObject *__pyx_n_s_str;
 static PyObject *__pyx_kp_s_stringsource;
 static PyObject *__pyx_n_s_test;
+static PyObject *__pyx_n_s_tupleA;
+static PyObject *__pyx_n_s_tupleB;
 static PyObject *__pyx_n_s_typing;
 static PyObject *__pyx_n_s_uint8;
 static PyObject *__pyx_n_s_update;
@@ -2239,7 +2240,7 @@ static PyObject *__pyx_pf_19checkpassingvehicle_5Point_1y___get__(struct __pyx_o
 static int __pyx_pf_19checkpassingvehicle_5Point_1y_2__set__(struct __pyx_obj_19checkpassingvehicle_Point *__pyx_v_self, PyObject *__pyx_v_value); /* proto */
 static PyObject *__pyx_pf_19checkpassingvehicle_5Point_2__reduce_cython__(struct __pyx_obj_19checkpassingvehicle_Point *__pyx_v_self); /* proto */
 static PyObject *__pyx_pf_19checkpassingvehicle_5Point_4__setstate_cython__(struct __pyx_obj_19checkpassingvehicle_Point *__pyx_v_self, PyObject *__pyx_v___pyx_state); /* proto */
-static PyObject *__pyx_pf_19checkpassingvehicle_passedLane(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_lanes, PyObject *__pyx_v_pointA, PyObject *__pyx_v_pointB); /* proto */
+static PyObject *__pyx_pf_19checkpassingvehicle_passedLane(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_lanes, PyObject *__pyx_v_tupleA, PyObject *__pyx_v_tupleB); /* proto */
 static PyObject *__pyx_pf_19checkpassingvehicle_2__pyx_unpickle_Line(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v___pyx_type, long __pyx_v___pyx_checksum, PyObject *__pyx_v___pyx_state); /* proto */
 static PyObject *__pyx_pf_19checkpassingvehicle_4__pyx_unpickle_Point(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v___pyx_type, long __pyx_v___pyx_checksum, PyObject *__pyx_v___pyx_state); /* proto */
 static PyObject *__pyx_tp_new_19checkpassingvehicle_Line(PyTypeObject *t, PyObject *a, PyObject *k); /*proto*/
@@ -2403,6 +2404,8 @@ typedef struct {
   PyObject *__pyx_n_s_str;
   PyObject *__pyx_kp_s_stringsource;
   PyObject *__pyx_n_s_test;
+  PyObject *__pyx_n_s_tupleA;
+  PyObject *__pyx_n_s_tupleB;
   PyObject *__pyx_n_s_typing;
   PyObject *__pyx_n_s_uint8;
   PyObject *__pyx_n_s_update;
@@ -2583,6 +2586,8 @@ static int __pyx_m_clear(PyObject *m) {
   Py_CLEAR(clear_module_state->__pyx_n_s_str);
   Py_CLEAR(clear_module_state->__pyx_kp_s_stringsource);
   Py_CLEAR(clear_module_state->__pyx_n_s_test);
+  Py_CLEAR(clear_module_state->__pyx_n_s_tupleA);
+  Py_CLEAR(clear_module_state->__pyx_n_s_tupleB);
   Py_CLEAR(clear_module_state->__pyx_n_s_typing);
   Py_CLEAR(clear_module_state->__pyx_n_s_uint8);
   Py_CLEAR(clear_module_state->__pyx_n_s_update);
@@ -2750,6 +2755,8 @@ static int __pyx_m_traverse(PyObject *m, visitproc visit, void *arg) {
   Py_VISIT(traverse_module_state->__pyx_n_s_str);
   Py_VISIT(traverse_module_state->__pyx_kp_s_stringsource);
   Py_VISIT(traverse_module_state->__pyx_n_s_test);
+  Py_VISIT(traverse_module_state->__pyx_n_s_tupleA);
+  Py_VISIT(traverse_module_state->__pyx_n_s_tupleB);
   Py_VISIT(traverse_module_state->__pyx_n_s_typing);
   Py_VISIT(traverse_module_state->__pyx_n_s_uint8);
   Py_VISIT(traverse_module_state->__pyx_n_s_update);
@@ -2914,6 +2921,8 @@ static int __pyx_m_traverse(PyObject *m, visitproc visit, void *arg) {
 #define __pyx_n_s_str __pyx_mstate_global->__pyx_n_s_str
 #define __pyx_kp_s_stringsource __pyx_mstate_global->__pyx_kp_s_stringsource
 #define __pyx_n_s_test __pyx_mstate_global->__pyx_n_s_test
+#define __pyx_n_s_tupleA __pyx_mstate_global->__pyx_n_s_tupleA
+#define __pyx_n_s_tupleB __pyx_mstate_global->__pyx_n_s_tupleB
 #define __pyx_n_s_typing __pyx_mstate_global->__pyx_n_s_typing
 #define __pyx_n_s_uint8 __pyx_mstate_global->__pyx_n_s_uint8
 #define __pyx_n_s_update __pyx_mstate_global->__pyx_n_s_update
@@ -4916,7 +4925,7 @@ static int __pyx_f_19checkpassingvehicle_hasPassedTheLineSegment(struct __pyx_ob
  *     lineFromPoints = calcLine(pointA, pointB) # another line segment
  *     return areLineSegmentsIntersecting(line, lineFromPoints, lineStartPoint, lineEndPoint, pointA, pointB)             # <<<<<<<<<<<<<<
  * 
- * def passedLane(lanes:Dict[str, Lane], pointA: Tuple[int, int], pointB: Tuple[int, int]) -> str:
+ * def passedLane(lanes:Dict[str, Lane], tupleA: Tuple[int, int], tupleB: Tuple[int, int]) -> str:
  */
   __pyx_t_2 = __pyx_f_19checkpassingvehicle_areLineSegmentsIntersecting(__pyx_v_line, __pyx_v_lineFromPoints, __pyx_v_lineStartPoint, __pyx_v_lineEndPoint, __pyx_v_pointA, __pyx_v_pointB); if (unlikely(__pyx_t_2 == ((int)-1) && PyErr_Occurred())) __PYX_ERR(0, 81, __pyx_L1_error)
   __pyx_r = __pyx_t_2;
@@ -4944,7 +4953,7 @@ static int __pyx_f_19checkpassingvehicle_hasPassedTheLineSegment(struct __pyx_ob
 /* "checkpassingvehicle.py":83
  *     return areLineSegmentsIntersecting(line, lineFromPoints, lineStartPoint, lineEndPoint, pointA, pointB)
  * 
- * def passedLane(lanes:Dict[str, Lane], pointA: Tuple[int, int], pointB: Tuple[int, int]) -> str:             # <<<<<<<<<<<<<<
+ * def passedLane(lanes:Dict[str, Lane], tupleA: Tuple[int, int], tupleB: Tuple[int, int]) -> str:             # <<<<<<<<<<<<<<
  *     '''
  *         lanes : dictionary laneid and Lane
  */
@@ -4967,8 +4976,8 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
 #endif
 ) {
   PyObject *__pyx_v_lanes = 0;
-  PyObject *__pyx_v_pointA = 0;
-  PyObject *__pyx_v_pointB = 0;
+  PyObject *__pyx_v_tupleA = 0;
+  PyObject *__pyx_v_tupleB = 0;
   #if !CYTHON_METH_FASTCALL
   CYTHON_UNUSED const Py_ssize_t __pyx_nargs = PyTuple_GET_SIZE(__pyx_args);
   #endif
@@ -4981,9 +4990,9 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   __Pyx_RefNannySetupContext("passedLane (wrapper)", 0);
   {
     #if CYTHON_USE_MODULE_STATE
-    PyObject **__pyx_pyargnames[] = {&__pyx_n_s_lanes,&__pyx_n_s_pointA,&__pyx_n_s_pointB,0};
+    PyObject **__pyx_pyargnames[] = {&__pyx_n_s_lanes,&__pyx_n_s_tupleA,&__pyx_n_s_tupleB,0};
     #else
-    static PyObject **__pyx_pyargnames[] = {&__pyx_n_s_lanes,&__pyx_n_s_pointA,&__pyx_n_s_pointB,0};
+    static PyObject **__pyx_pyargnames[] = {&__pyx_n_s_lanes,&__pyx_n_s_tupleA,&__pyx_n_s_tupleB,0};
     #endif
     PyObject* values[3] = {0,0,0};
     if (__pyx_kwds) {
@@ -5006,14 +5015,14 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
         else goto __pyx_L5_argtuple_error;
         CYTHON_FALLTHROUGH;
         case  1:
-        if (likely((values[1] = __Pyx_GetKwValue_FASTCALL(__pyx_kwds, __pyx_kwvalues, __pyx_n_s_pointA)) != 0)) kw_args--;
+        if (likely((values[1] = __Pyx_GetKwValue_FASTCALL(__pyx_kwds, __pyx_kwvalues, __pyx_n_s_tupleA)) != 0)) kw_args--;
         else if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 83, __pyx_L3_error)
         else {
           __Pyx_RaiseArgtupleInvalid("passedLane", 1, 3, 3, 1); __PYX_ERR(0, 83, __pyx_L3_error)
         }
         CYTHON_FALLTHROUGH;
         case  2:
-        if (likely((values[2] = __Pyx_GetKwValue_FASTCALL(__pyx_kwds, __pyx_kwvalues, __pyx_n_s_pointB)) != 0)) kw_args--;
+        if (likely((values[2] = __Pyx_GetKwValue_FASTCALL(__pyx_kwds, __pyx_kwvalues, __pyx_n_s_tupleB)) != 0)) kw_args--;
         else if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 83, __pyx_L3_error)
         else {
           __Pyx_RaiseArgtupleInvalid("passedLane", 1, 3, 3, 2); __PYX_ERR(0, 83, __pyx_L3_error)
@@ -5031,8 +5040,8 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
       values[2] = __Pyx_Arg_FASTCALL(__pyx_args, 2);
     }
     __pyx_v_lanes = ((PyObject*)values[0]);
-    __pyx_v_pointA = ((PyObject*)values[1]);
-    __pyx_v_pointB = ((PyObject*)values[2]);
+    __pyx_v_tupleA = ((PyObject*)values[1]);
+    __pyx_v_tupleB = ((PyObject*)values[2]);
   }
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L5_argtuple_error:;
@@ -5043,9 +5052,9 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   return NULL;
   __pyx_L4_argument_unpacking_done:;
   if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_lanes), (&PyDict_Type), 0, "lanes", 1))) __PYX_ERR(0, 83, __pyx_L1_error)
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_pointA), (&PyTuple_Type), 0, "pointA", 1))) __PYX_ERR(0, 83, __pyx_L1_error)
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_pointB), (&PyTuple_Type), 0, "pointB", 1))) __PYX_ERR(0, 83, __pyx_L1_error)
-  __pyx_r = __pyx_pf_19checkpassingvehicle_passedLane(__pyx_self, __pyx_v_lanes, __pyx_v_pointA, __pyx_v_pointB);
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_tupleA), (&PyTuple_Type), 0, "tupleA", 1))) __PYX_ERR(0, 83, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_tupleB), (&PyTuple_Type), 0, "tupleB", 1))) __PYX_ERR(0, 83, __pyx_L1_error)
+  __pyx_r = __pyx_pf_19checkpassingvehicle_passedLane(__pyx_self, __pyx_v_lanes, __pyx_v_tupleA, __pyx_v_tupleB);
 
   /* function exit code */
   goto __pyx_L0;
@@ -5056,7 +5065,9 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   return __pyx_r;
 }
 
-static PyObject *__pyx_pf_19checkpassingvehicle_passedLane(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_lanes, PyObject *__pyx_v_pointA, PyObject *__pyx_v_pointB) {
+static PyObject *__pyx_pf_19checkpassingvehicle_passedLane(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_lanes, PyObject *__pyx_v_tupleA, PyObject *__pyx_v_tupleB) {
+  struct __pyx_obj_19checkpassingvehicle_Point *__pyx_v_pointA = 0;
+  struct __pyx_obj_19checkpassingvehicle_Point *__pyx_v_pointB = 0;
   PyObject *__pyx_v_laneid = NULL;
   PyObject *__pyx_v_lane = NULL;
   struct __pyx_obj_19checkpassingvehicle_Point *__pyx_v_lineStartPoint = 0;
@@ -5076,37 +5087,33 @@ static PyObject *__pyx_pf_19checkpassingvehicle_passedLane(CYTHON_UNUSED PyObjec
   const char *__pyx_filename = NULL;
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("passedLane", 0);
-  __Pyx_INCREF(__pyx_v_pointA);
-  __Pyx_INCREF(__pyx_v_pointB);
 
   /* "checkpassingvehicle.py":93
  *     '''
  * 
- *     pointA: Point = Point(*pointA)             # <<<<<<<<<<<<<<
- *     pointB: Point = Point(*pointB)
+ *     pointA: Point = Point(*tupleA)             # <<<<<<<<<<<<<<
+ *     pointB: Point = Point(*tupleB)
  * 
  */
-  __pyx_t_1 = __Pyx_PyObject_Call(((PyObject *)__pyx_ptype_19checkpassingvehicle_Point), __pyx_v_pointA, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 93, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyObject_Call(((PyObject *)__pyx_ptype_19checkpassingvehicle_Point), __pyx_v_tupleA, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 93, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  if (!(likely(PyTuple_CheckExact(__pyx_t_1)) || __Pyx_RaiseUnexpectedTypeError("tuple", __pyx_t_1))) __PYX_ERR(0, 93, __pyx_L1_error)
-  __Pyx_DECREF_SET(__pyx_v_pointA, ((PyObject*)__pyx_t_1));
+  __pyx_v_pointA = ((struct __pyx_obj_19checkpassingvehicle_Point *)__pyx_t_1);
   __pyx_t_1 = 0;
 
   /* "checkpassingvehicle.py":94
  * 
- *     pointA: Point = Point(*pointA)
- *     pointB: Point = Point(*pointB)             # <<<<<<<<<<<<<<
+ *     pointA: Point = Point(*tupleA)
+ *     pointB: Point = Point(*tupleB)             # <<<<<<<<<<<<<<
  * 
  *     for (laneid, lane) in lanes.items():
  */
-  __pyx_t_1 = __Pyx_PyObject_Call(((PyObject *)__pyx_ptype_19checkpassingvehicle_Point), __pyx_v_pointB, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 94, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyObject_Call(((PyObject *)__pyx_ptype_19checkpassingvehicle_Point), __pyx_v_tupleB, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 94, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  if (!(likely(PyTuple_CheckExact(__pyx_t_1)) || __Pyx_RaiseUnexpectedTypeError("tuple", __pyx_t_1))) __PYX_ERR(0, 94, __pyx_L1_error)
-  __Pyx_DECREF_SET(__pyx_v_pointB, ((PyObject*)__pyx_t_1));
+  __pyx_v_pointB = ((struct __pyx_obj_19checkpassingvehicle_Point *)__pyx_t_1);
   __pyx_t_1 = 0;
 
   /* "checkpassingvehicle.py":96
- *     pointB: Point = Point(*pointB)
+ *     pointB: Point = Point(*tupleB)
  * 
  *     for (laneid, lane) in lanes.items():             # <<<<<<<<<<<<<<
  * 
@@ -5184,9 +5191,7 @@ static PyObject *__pyx_pf_19checkpassingvehicle_passedLane(CYTHON_UNUSED PyObjec
  *             return laneid
  * 
  */
-    if (!(likely(__Pyx_TypeTest(__pyx_v_pointA, __pyx_ptype_19checkpassingvehicle_Point)))) __PYX_ERR(0, 103, __pyx_L1_error)
-    if (!(likely(__Pyx_TypeTest(__pyx_v_pointB, __pyx_ptype_19checkpassingvehicle_Point)))) __PYX_ERR(0, 103, __pyx_L1_error)
-    __pyx_t_7 = __pyx_f_19checkpassingvehicle_hasPassedTheLineSegment(__pyx_v_line, __pyx_v_lineStartPoint, __pyx_v_lineEndPoint, ((struct __pyx_obj_19checkpassingvehicle_Point *)__pyx_v_pointA), ((struct __pyx_obj_19checkpassingvehicle_Point *)__pyx_v_pointB)); if (unlikely(__pyx_t_7 == ((int)-1) && PyErr_Occurred())) __PYX_ERR(0, 103, __pyx_L1_error)
+    __pyx_t_7 = __pyx_f_19checkpassingvehicle_hasPassedTheLineSegment(__pyx_v_line, __pyx_v_lineStartPoint, __pyx_v_lineEndPoint, __pyx_v_pointA, __pyx_v_pointB); if (unlikely(__pyx_t_7 == ((int)-1) && PyErr_Occurred())) __PYX_ERR(0, 103, __pyx_L1_error)
     __pyx_t_8 = (__pyx_t_7 != 0);
     if (__pyx_t_8) {
 
@@ -5230,7 +5235,7 @@ static PyObject *__pyx_pf_19checkpassingvehicle_passedLane(CYTHON_UNUSED PyObjec
   /* "checkpassingvehicle.py":83
  *     return areLineSegmentsIntersecting(line, lineFromPoints, lineStartPoint, lineEndPoint, pointA, pointB)
  * 
- * def passedLane(lanes:Dict[str, Lane], pointA: Tuple[int, int], pointB: Tuple[int, int]) -> str:             # <<<<<<<<<<<<<<
+ * def passedLane(lanes:Dict[str, Lane], tupleA: Tuple[int, int], tupleB: Tuple[int, int]) -> str:             # <<<<<<<<<<<<<<
  *     '''
  *         lanes : dictionary laneid and Lane
  */
@@ -5243,13 +5248,13 @@ static PyObject *__pyx_pf_19checkpassingvehicle_passedLane(CYTHON_UNUSED PyObjec
   __Pyx_AddTraceback("checkpassingvehicle.passedLane", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __pyx_r = NULL;
   __pyx_L0:;
+  __Pyx_XDECREF((PyObject *)__pyx_v_pointA);
+  __Pyx_XDECREF((PyObject *)__pyx_v_pointB);
   __Pyx_XDECREF(__pyx_v_laneid);
   __Pyx_XDECREF(__pyx_v_lane);
   __Pyx_XDECREF((PyObject *)__pyx_v_lineStartPoint);
   __Pyx_XDECREF((PyObject *)__pyx_v_lineEndPoint);
   __Pyx_XDECREF((PyObject *)__pyx_v_line);
-  __Pyx_XDECREF(__pyx_v_pointA);
-  __Pyx_XDECREF(__pyx_v_pointB);
   __Pyx_XGIVEREF(__pyx_r);
   __Pyx_RefNannyFinishContext();
   return __pyx_r;
@@ -6693,6 +6698,8 @@ static __Pyx_StringTabEntry __pyx_string_tab[] = {
   {0, __pyx_k_str, sizeof(__pyx_k_str), 0, 0, 1, 1},
   {0, __pyx_k_stringsource, sizeof(__pyx_k_stringsource), 0, 0, 1, 0},
   {0, __pyx_k_test, sizeof(__pyx_k_test), 0, 0, 1, 1},
+  {0, __pyx_k_tupleA, sizeof(__pyx_k_tupleA), 0, 0, 1, 1},
+  {0, __pyx_k_tupleB, sizeof(__pyx_k_tupleB), 0, 0, 1, 1},
   {0, __pyx_k_typing, sizeof(__pyx_k_typing), 0, 0, 1, 1},
   {0, __pyx_k_uint8, sizeof(__pyx_k_uint8), 0, 0, 1, 1},
   {0, __pyx_k_update, sizeof(__pyx_k_update), 0, 0, 1, 1},
@@ -6795,6 +6802,8 @@ static __Pyx_StringTabEntry __pyx_string_tab[] = {
   {&__pyx_n_s_str, __pyx_k_str, sizeof(__pyx_k_str), 0, 0, 1, 1},
   {&__pyx_kp_s_stringsource, __pyx_k_stringsource, sizeof(__pyx_k_stringsource), 0, 0, 1, 0},
   {&__pyx_n_s_test, __pyx_k_test, sizeof(__pyx_k_test), 0, 0, 1, 1},
+  {&__pyx_n_s_tupleA, __pyx_k_tupleA, sizeof(__pyx_k_tupleA), 0, 0, 1, 1},
+  {&__pyx_n_s_tupleB, __pyx_k_tupleB, sizeof(__pyx_k_tupleB), 0, 0, 1, 1},
   {&__pyx_n_s_typing, __pyx_k_typing, sizeof(__pyx_k_typing), 0, 0, 1, 1},
   {&__pyx_n_s_uint8, __pyx_k_uint8, sizeof(__pyx_k_uint8), 0, 0, 1, 1},
   {&__pyx_n_s_update, __pyx_k_update, sizeof(__pyx_k_update), 0, 0, 1, 1},
@@ -6872,14 +6881,14 @@ static CYTHON_SMALL_CODE int __Pyx_InitCachedConstants(void) {
   /* "checkpassingvehicle.py":83
  *     return areLineSegmentsIntersecting(line, lineFromPoints, lineStartPoint, lineEndPoint, pointA, pointB)
  * 
- * def passedLane(lanes:Dict[str, Lane], pointA: Tuple[int, int], pointB: Tuple[int, int]) -> str:             # <<<<<<<<<<<<<<
+ * def passedLane(lanes:Dict[str, Lane], tupleA: Tuple[int, int], tupleB: Tuple[int, int]) -> str:             # <<<<<<<<<<<<<<
  *     '''
  *         lanes : dictionary laneid and Lane
  */
-  __pyx_tuple__11 = PyTuple_Pack(8, __pyx_n_s_lanes, __pyx_n_s_pointA, __pyx_n_s_pointB, __pyx_n_s_laneid, __pyx_n_s_lane, __pyx_n_s_lineStartPoint, __pyx_n_s_lineEndPoint, __pyx_n_s_line); if (unlikely(!__pyx_tuple__11)) __PYX_ERR(0, 83, __pyx_L1_error)
+  __pyx_tuple__11 = PyTuple_Pack(10, __pyx_n_s_lanes, __pyx_n_s_tupleA, __pyx_n_s_tupleB, __pyx_n_s_pointA, __pyx_n_s_pointB, __pyx_n_s_laneid, __pyx_n_s_lane, __pyx_n_s_lineStartPoint, __pyx_n_s_lineEndPoint, __pyx_n_s_line); if (unlikely(!__pyx_tuple__11)) __PYX_ERR(0, 83, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_tuple__11);
   __Pyx_GIVEREF(__pyx_tuple__11);
-  __pyx_codeobj__12 = (PyObject*)__Pyx_PyCode_New(3, 0, 0, 8, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__11, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_intensive_operations_checkpassin, __pyx_n_s_passedLane, 83, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__12)) __PYX_ERR(0, 83, __pyx_L1_error)
+  __pyx_codeobj__12 = (PyObject*)__Pyx_PyCode_New(3, 0, 0, 10, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__11, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_intensive_operations_checkpassin, __pyx_n_s_passedLane, 83, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__12)) __PYX_ERR(0, 83, __pyx_L1_error)
 
   /* "checkpassingvehicle.py":114
  *     import cv2
@@ -7082,14 +7091,16 @@ static CYTHON_SMALL_CODE int __Pyx_InitConstants(void) {
   if (__Pyx_InitString(__pyx_string_tab[90], &__pyx_n_s_str) < 0) __PYX_ERR(0, 1, __pyx_L1_error);
   if (__Pyx_InitString(__pyx_string_tab[91], &__pyx_kp_s_stringsource) < 0) __PYX_ERR(0, 1, __pyx_L1_error);
   if (__Pyx_InitString(__pyx_string_tab[92], &__pyx_n_s_test) < 0) __PYX_ERR(0, 1, __pyx_L1_error);
-  if (__Pyx_InitString(__pyx_string_tab[93], &__pyx_n_s_typing) < 0) __PYX_ERR(0, 1, __pyx_L1_error);
-  if (__Pyx_InitString(__pyx_string_tab[94], &__pyx_n_s_uint8) < 0) __PYX_ERR(0, 1, __pyx_L1_error);
-  if (__Pyx_InitString(__pyx_string_tab[95], &__pyx_n_s_update) < 0) __PYX_ERR(0, 1, __pyx_L1_error);
-  if (__Pyx_InitString(__pyx_string_tab[96], &__pyx_n_s_use_setstate) < 0) __PYX_ERR(0, 1, __pyx_L1_error);
-  if (__Pyx_InitString(__pyx_string_tab[97], &__pyx_n_s_waitKey) < 0) __PYX_ERR(0, 1, __pyx_L1_error);
-  if (__Pyx_InitString(__pyx_string_tab[98], &__pyx_n_s_x) < 0) __PYX_ERR(0, 1, __pyx_L1_error);
-  if (__Pyx_InitString(__pyx_string_tab[99], &__pyx_n_s_y) < 0) __PYX_ERR(0, 1, __pyx_L1_error);
-  if (__Pyx_InitString(__pyx_string_tab[100], &__pyx_n_s_zeros) < 0) __PYX_ERR(0, 1, __pyx_L1_error);
+  if (__Pyx_InitString(__pyx_string_tab[93], &__pyx_n_s_tupleA) < 0) __PYX_ERR(0, 1, __pyx_L1_error);
+  if (__Pyx_InitString(__pyx_string_tab[94], &__pyx_n_s_tupleB) < 0) __PYX_ERR(0, 1, __pyx_L1_error);
+  if (__Pyx_InitString(__pyx_string_tab[95], &__pyx_n_s_typing) < 0) __PYX_ERR(0, 1, __pyx_L1_error);
+  if (__Pyx_InitString(__pyx_string_tab[96], &__pyx_n_s_uint8) < 0) __PYX_ERR(0, 1, __pyx_L1_error);
+  if (__Pyx_InitString(__pyx_string_tab[97], &__pyx_n_s_update) < 0) __PYX_ERR(0, 1, __pyx_L1_error);
+  if (__Pyx_InitString(__pyx_string_tab[98], &__pyx_n_s_use_setstate) < 0) __PYX_ERR(0, 1, __pyx_L1_error);
+  if (__Pyx_InitString(__pyx_string_tab[99], &__pyx_n_s_waitKey) < 0) __PYX_ERR(0, 1, __pyx_L1_error);
+  if (__Pyx_InitString(__pyx_string_tab[100], &__pyx_n_s_x) < 0) __PYX_ERR(0, 1, __pyx_L1_error);
+  if (__Pyx_InitString(__pyx_string_tab[101], &__pyx_n_s_y) < 0) __PYX_ERR(0, 1, __pyx_L1_error);
+  if (__Pyx_InitString(__pyx_string_tab[102], &__pyx_n_s_zeros) < 0) __PYX_ERR(0, 1, __pyx_L1_error);
   #endif
   #if !CYTHON_USE_MODULE_STATE
   if (__Pyx_InitStrings(__pyx_string_tab) < 0) __PYX_ERR(0, 1, __pyx_L1_error);
@@ -7651,15 +7662,15 @@ if (!__Pyx_RefNanny) {
   /* "checkpassingvehicle.py":83
  *     return areLineSegmentsIntersecting(line, lineFromPoints, lineStartPoint, lineEndPoint, pointA, pointB)
  * 
- * def passedLane(lanes:Dict[str, Lane], pointA: Tuple[int, int], pointB: Tuple[int, int]) -> str:             # <<<<<<<<<<<<<<
+ * def passedLane(lanes:Dict[str, Lane], tupleA: Tuple[int, int], tupleB: Tuple[int, int]) -> str:             # <<<<<<<<<<<<<<
  *     '''
  *         lanes : dictionary laneid and Lane
  */
   __pyx_t_3 = __Pyx_PyDict_NewPresized(4); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 83, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
   if (PyDict_SetItem(__pyx_t_3, __pyx_n_s_lanes, __pyx_kp_s_Dict_str_Lane) < 0) __PYX_ERR(0, 83, __pyx_L1_error)
-  if (PyDict_SetItem(__pyx_t_3, __pyx_n_s_pointA, __pyx_kp_s_Tuple_int_int) < 0) __PYX_ERR(0, 83, __pyx_L1_error)
-  if (PyDict_SetItem(__pyx_t_3, __pyx_n_s_pointB, __pyx_kp_s_Tuple_int_int) < 0) __PYX_ERR(0, 83, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_3, __pyx_n_s_tupleA, __pyx_kp_s_Tuple_int_int) < 0) __PYX_ERR(0, 83, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_3, __pyx_n_s_tupleB, __pyx_kp_s_Tuple_int_int) < 0) __PYX_ERR(0, 83, __pyx_L1_error)
   if (PyDict_SetItem(__pyx_t_3, __pyx_n_s_return, __pyx_n_s_str) < 0) __PYX_ERR(0, 83, __pyx_L1_error)
   __pyx_t_2 = __Pyx_CyFunction_New(&__pyx_mdef_19checkpassingvehicle_1passedLane, 0, __pyx_n_s_passedLane, NULL, __pyx_n_s_checkpassingvehicle, __pyx_d, ((PyObject *)__pyx_codeobj__12)); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 83, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
@@ -9912,26 +9923,6 @@ static CYTHON_INLINE int __Pyx_dict_iter_next(
         *pvalue = next_item;
     }
     return 1;
-}
-
-/* ExtTypeTest */
-static CYTHON_INLINE int __Pyx_TypeTest(PyObject *obj, PyTypeObject *type) {
-    __Pyx_TypeName obj_type_name;
-    __Pyx_TypeName type_name;
-    if (unlikely(!type)) {
-        PyErr_SetString(PyExc_SystemError, "Missing type object");
-        return 0;
-    }
-    if (likely(__Pyx_TypeCheck(obj, type)))
-        return 1;
-    obj_type_name = __Pyx_PyType_GetName(Py_TYPE(obj));
-    type_name = __Pyx_PyType_GetName(type);
-    PyErr_Format(PyExc_TypeError,
-                 "Cannot convert " __Pyx_FMT_TYPENAME " to " __Pyx_FMT_TYPENAME,
-                 obj_type_name, type_name);
-    __Pyx_DECREF_TypeName(obj_type_name);
-    __Pyx_DECREF_TypeName(type_name);
-    return 0;
 }
 
 /* Import */
