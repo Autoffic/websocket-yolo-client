@@ -281,6 +281,7 @@ def run(
                     lane.start_point = (int(row["start_point_x"]), int(row["start_point_y"]))
                     lane.end_point = (int(row["end_point_x"]), int(row["end_point_y"]))
                     lanes.lanes_dict[row["lane_id"]] = lane
+            number_of_lanes = lanes.lanes_dict.__len__()
         else:
             LOGGER.error("\nCouldn't find lane csv file for given video.\n")
 
@@ -458,7 +459,7 @@ def run(
                     object_centroid_in_this_step = centroid
                     object_centroid_in_previous_step = previous_objects.get(objectID)
 
-                    if object_centroid_in_previous_step is not None:
+                    if number_of_lanes > 0 and object_centroid_in_previous_step is not None:
                         passedlane = passedLane(lanes.lanes_dict, object_centroid_in_this_step, object_centroid_in_previous_step)
 
                         if (passedlane != "None") and web_socket:
