@@ -5,6 +5,7 @@
 import numpy
 import cv2
 import cython
+
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 def display_and_wait(frame):
@@ -18,7 +19,8 @@ def display_and_wait(frame):
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-@cython.ccall
+@cython.cfunc
+@cython.nogil
 @cython.returns(cython.uchar[:,:,::1])
 def copy_parallely(indexToCopy: cython.int, sourceImage: cython.uchar[:,:,::1], destinationImage: cython.uchar[:,:,::1], rois: cython.int[:,::1]):
     startRoiY: cython.int = rois[indexToCopy,1]
@@ -26,6 +28,10 @@ def copy_parallely(indexToCopy: cython.int, sourceImage: cython.uchar[:,:,::1], 
     startRoiX: cython.int = rois[indexToCopy,0]
     imgWidth:  cython.int = rois[indexToCopy,2]
     imgChannel:cython.int = sourceImage.shape[2]
+
+    j: cython.int 
+    k: cython.int 
+    l: cython.int
         
     for j in range(imgHeight):
         for k in range(imgWidth):
@@ -75,10 +81,9 @@ def filter_roi(rois: cython.int[:, ::1], parent_image: cython.uchar[:, :, ::1], 
                 copy_operations = {executor.submit(copy_parallely, i, parent_image, image_parts_memview[i], rois): i for i in range(number_of_rois)}
 
                 completed = 0
-                for operation in as_completed(copy_operations):
+                for _ in as_completed(copy_operations):
                     completed += 1
                     if completed > number_of_rois - 1:
-                        returned_memview = copy_operations[operation]
                         return numpy.concatenate(image_parts, axis=1)         
 
         # using interpolation for resizing, produces distorted image if the image sizes differs a lot
