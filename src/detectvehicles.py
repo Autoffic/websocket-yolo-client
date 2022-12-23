@@ -225,6 +225,9 @@ def run(
 
     # for calculating display fps
     display_previous_time = 0
+
+    # for calculating the video read speed
+    time_before_video_read_start = 0
         
     # Running inference inference_per_second times a second 
     # here time is relative to video i.e. fps frames is compared to 1 second
@@ -303,6 +306,9 @@ def run(
         previous_objects = {}
 
     for path, im, im0s, vid_cap, s in dataset:
+
+        if total_frames > 0:
+            time_taken_for_video_read = time.time() - time_before_video_read_start
         
         if not disable_centroid_tracking:
             # bounding boxes for centroid tracking
@@ -507,9 +513,11 @@ def run(
                     save_path = str(Path(save_path).with_suffix('.mp4'))  # force *.mp4 suffix on results videos
                     vid_writer[i] = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (w, h))
                 vid_writer[i].write(im0)
-        total_frames += 1
 
         LOGGER.debug(f"{s}{'' if len(det) else '(no detections), '}{dt[1].dt * 1E3:.1f}ms")
+
+        if total_frames > 0:
+            LOGGER.debug(f"Time taken for reading video frame: {time_taken_for_video_read * 1E3:.1f}ms")
         
         if number_of_rois > 0:
             LOGGER.debug(f"Image operation (filtering): {im_profilers[0].dt * 1E3:.1f}ms")
@@ -524,6 +532,9 @@ def run(
             LOGGER.debug(f"Centroid Tracking : {ct_profiler.dt * 1E3:.1f}ms, Lane Pass Checking: {lp_profiler.dt * 1E3:.1f}ms ")
 
             previous_objects = objects.copy()
+
+        time_before_video_read_start = time.time()
+        total_frames += 1
 
     # Print results
     t = tuple(x.t / seen * 1E3 for x in dt)  # speeds per image
