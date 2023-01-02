@@ -2,5 +2,5 @@ numpy
 pandas
 python-socketio
 websocket-client
-yolov5==6.2.1  # there are some changes in newer version so, newer ones probably won't work
+yolov5==7.0.6  # there are some changes in newer version so, newer ones probably won't work
 cython==3.0.0a11
