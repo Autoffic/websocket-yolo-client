@@ -83,9 +83,9 @@ if str(ROOT) not in sys.path:
 ROOT = Path(os.path.relpath(ROOT, Path.cwd()))  # relative
 
 from yolov5.models.common import DetectMultiBackend
-from yolov5.utils.dataloaders import IMG_FORMATS, VID_FORMATS, LoadImages, LoadStreams
+from yolov5.utils.dataloaders import IMG_FORMATS, VID_FORMATS, LoadImages, LoadScreenshots, LoadStreams
 from yolov5.utils.general import (LOGGER, Profile, check_file, check_img_size, check_imshow, check_requirements, colorstr, cv2,
-                           increment_path, non_max_suppression, print_args, scale_coords, strip_optimizer, xyxy2xywh)
+                           increment_path, non_max_suppression, print_args, scale_boxes, strip_optimizer, xyxy2xywh)
 from yolov5.utils.plots import Annotator, colors, save_one_box
 from yolov5.utils.torch_utils import select_device, smart_inference_mode
 
@@ -198,6 +198,7 @@ def run(
     is_file = Path(source).suffix[1:] in (IMG_FORMATS + VID_FORMATS)
     is_url = source.lower().startswith(('rtsp://', 'rtmp://', 'http://', 'https://'))
     webcam = source.isnumeric() or source.endswith('.txt') or (is_url and not is_file)
+    screenshot = source.lower().startswith('screen')
     if is_url and is_file:
         source = check_file(source)  # download
 
@@ -212,13 +213,15 @@ def run(
     imgsz = check_img_size(imgsz, s=stride)  # check image size
 
     # Dataloader
+    bs = 1  # batch_size
     if webcam:
         view_img = check_imshow()
         dataset = LoadStreams(source, img_size=imgsz, stride=stride, auto=pt, vid_stride=vid_stride)
         bs = len(dataset)  # batch_size
+    elif screenshot:
+        dataset = LoadScreenshots(source, img_size=imgsz, stride=stride, auto=pt)
     else:
         dataset = LoadImages(source, img_size=imgsz, stride=stride, auto=pt, vid_stride=vid_stride)
-        bs = 1  # batch_size
     vid_path, vid_writer = [None] * bs, [None] * bs
 
     FPS = get_fps(source)
@@ -416,7 +419,7 @@ def run(
 
                 # Rescale boxes from img_size to im0 size
                 with im_profilers[2]:
-                    det[:, :4] = scale_coords(im.shape[2:], det[:, :4], im0.shape).round()
+                    det[:, :4] = scale_boxes(im.shape[2:], det[:, :4], im0.shape).round()
                 # Print results
                 for c in det[:, -1].unique():
                     n = (det[:, -1] == c).sum()  # detections per class
@@ -514,6 +517,7 @@ def run(
                     vid_writer[i] = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (w, h))
                 vid_writer[i].write(im0)
 
+        LOGGER.debug("--------------------------------------------------------------------------------")
         LOGGER.debug(f"{s}{'' if len(det) else '(no detections), '}{dt[1].dt * 1E3:.1f}ms")
 
         if total_frames > 0:
